@@ -1,0 +1,13 @@
+
+# Firebase config, generated per developer
+app/lib/firebase_options.dart
+app/android/app/google-services.json
+.env
+*.keystore
+
+# Firebase config, generated per developer
+app/lib/firebase_options.dart
+app/android/app/google-services.json
+.env
+*.keystore
+.idea/
