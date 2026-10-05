@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// matches projects/{projectId} in SCHEMA.md.
+
 class ProjectModel {
   final String projectId;
   final String ownerId;
@@ -53,7 +53,7 @@ class ProjectModel {
   }
 }
 
-/// matches projects/{projectId}/members/{userId} in SCHEMA.md.
+
 class ProjectMember {
   final String userId;
   final String role; // "owner" or "member", lowercase in firestore

@@ -47,3 +47,76 @@ final pendingRequestsProvider =
       .snapshots()
       .map((snap) => snap.docs.map(MembershipRequest.fromDoc).toList());
 });
+
+/// the three filter values the browse screen offers. null means "all".
+class ProjectFilters {
+  final String? technology;
+  final String? difficulty;
+  final String? category;
+
+  const ProjectFilters({this.technology, this.difficulty, this.category});
+
+  ProjectFilters copyWith({
+    String? technology,
+    String? difficulty,
+    String? category,
+    bool clearTechnology = false,
+    bool clearDifficulty = false,
+    bool clearCategory = false,
+  }) {
+    return ProjectFilters(
+      technology: clearTechnology ? null : (technology ?? this.technology),
+      difficulty: clearDifficulty ? null : (difficulty ?? this.difficulty),
+      category: clearCategory ? null : (category ?? this.category),
+    );
+  }
+}
+
+/// holds the browse screen's selected filters. logic for this feature lives
+/// here, not in the screen widget, per the team's riverpod convention.
+class ProjectFiltersNotifier extends Notifier<ProjectFilters> {
+  @override
+  ProjectFilters build() => const ProjectFilters();
+
+  void setTechnology(String? value) {
+    state = state.copyWith(technology: value, clearTechnology: value == null);
+  }
+
+  void setDifficulty(String? value) {
+    state = state.copyWith(difficulty: value, clearDifficulty: value == null);
+  }
+
+  void setCategory(String? value) {
+    state = state.copyWith(category: value, clearCategory: value == null);
+  }
+
+  void clearAll() => state = const ProjectFilters();
+}
+
+final projectFiltersProvider =
+    NotifierProvider<ProjectFiltersNotifier, ProjectFilters>(
+  ProjectFiltersNotifier.new,
+);
+
+/// the full project list narrowed by the current filters. a plain Provider,
+/// not a StreamProvider, since it derives from projectsProvider rather than
+/// talking to firestore directly.
+final filteredProjectsProvider = Provider<AsyncValue<List<ProjectModel>>>((ref) {
+  final projectsAsync = ref.watch(projectsProvider);
+  final filters = ref.watch(projectFiltersProvider);
+
+  return projectsAsync.whenData((projects) {
+    return projects.where((p) {
+      if (filters.technology != null && p.technology != filters.technology) {
+        return false;
+      }
+      if (filters.difficulty != null && p.difficulty != filters.difficulty) {
+        return false;
+      }
+      if (filters.category != null && p.category != filters.category) {
+        return false;
+      }
+      return true;
+    }).toList();
+  });
+});
