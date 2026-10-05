@@ -86,4 +86,15 @@ class AuthNotifier extends Notifier<AsyncValue<void>> {
       state = AsyncError(e, stackTrace);
     }
   }
+
+  Future<void> signOut() async {
+    state = const AsyncLoading();
+
+    try {
+      await _auth.signOut();
+      state = const AsyncData(null);
+    } catch (e, stackTrace) {
+      state = AsyncError(e, stackTrace);
+    }
+  }
 }
