@@ -7,6 +7,7 @@ import '../providers/community_providers.dart';
 import '../widgets/question_card.dart';
 import 'ask_question_screen.dart';
 import 'question_detail_screen.dart';
+import '../community_theme.dart';
 
 class CommunityScreen extends ConsumerWidget {
   const CommunityScreen({super.key});
@@ -15,30 +16,34 @@ class CommunityScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final signIn = ref.watch(devSignInProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Community'),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const AskQuestionScreen()));
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Ask'),
-      ),
-      body: signIn.when(
-        data: (_) => const _QuestionList(),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Dev sign in failed: $err')),
+    return Theme(
+      data: communityTheme,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Community'),
+          actions: [
+            IconButton(
+              tooltip: 'Sign out',
+              icon: const Icon(Icons.logout),
+              onPressed: () => FirebaseAuth.instance.signOut(),
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AskQuestionScreen()),
+            );
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Ask'),
+        ),
+        body: signIn.when(
+          data: (_) => const _QuestionList(),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) =>
+              Center(child: Text('Dev sign in failed: $err')),
+        ),
       ),
     );
   }
