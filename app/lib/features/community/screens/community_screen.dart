@@ -5,6 +5,7 @@ import '../data/community_options.dart';
 import '../providers/community_providers.dart';
 import '../widgets/question_card.dart';
 import 'ask_question_screen.dart';
+import 'question_detail_screen.dart';
 
 class CommunityScreen extends ConsumerWidget {
   const CommunityScreen({super.key});
@@ -91,7 +92,15 @@ class _QuestionList extends ConsumerWidget {
                   final question = questions[index];
                   return QuestionCard(
                     question: question,
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => QuestionDetailScreen(
+                            questionId: question.questionId,
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );
