@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'firebase_options.dart';
+import 'features/community/screens/community_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,9 +20,9 @@ class PatchCollabApp extends StatelessWidget {
     return MaterialApp(
       title: 'PatchCollab',
       theme: ThemeData(useMaterial3: true),
-      home: const Scaffold(
-        body: Center(child: Text('PatchCollab')),
-      ),
+      // TODO: temporary dev entry point, replace with the real navigation
+      // and auth gate once they land
+      home: const CommunityScreen(),
     );
   }
 }
