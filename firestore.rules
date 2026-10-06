@@ -1,0 +1,195 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // True when the write changes any of the listed fields
+    function changes(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // True when the write changes nothing except the listed fields
+    function changesOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function projectPath(projectId) {
+      return /databases/$(database)/documents/projects/$(projectId);
+    }
+
+    function isProjectOwner(projectId) {
+      return signedIn() && get(projectPath(projectId)).data.ownerId == request.auth.uid;
+    }
+
+    function conversationPath(conversationId) {
+      return /databases/$(database)/documents/conversations/$(conversationId);
+    }
+
+    // ---------- users ----------
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId);
+      allow delete: if false;
+    }
+
+    // ---------- projects ----------
+
+    match /projects/{projectId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isProjectOwner(projectId) && !changes(['ownerId']);
+      allow delete: if isProjectOwner(projectId);
+
+      match /members/{memberId} {
+        allow read: if signedIn();
+        // Approved members are added by the approval Cloud Function.
+        // The only client write is the owner adding their own row when the project is created.
+        allow create: if isSelf(memberId)
+          && getAfter(projectPath(projectId)).data.ownerId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isSelf(memberId) || isProjectOwner(projectId);
+      }
+
+      match /membershipRequests/{requestId} {
+        allow read: if signedIn()
+          && (resource.data.userId == request.auth.uid || isProjectOwner(projectId));
+        allow create: if signedIn()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.status == 'pending';
+        allow update: if false;
+        allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    // ---------- questions (community questions and review requests) ----------
+
+    match /questions/{questionId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.type in ['question', 'reviewRequest']
+        && request.resource.data.voteCount == 0
+        && request.resource.data.createdAt == request.time
+        && !('acceptedAnswerId' in request.resource.data && request.resource.data.acceptedAnswerId != null);
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && !changes(['userId', 'type', 'voteCount', 'acceptedAnswerId', 'createdAt']);
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+
+      // One document per voter, id equals the voter's uid. voteCount is
+      // maintained by a Cloud Function, never by the client.
+      match /votes/{voterId} {
+        allow read: if isSelf(voterId);
+        allow create, update: if isSelf(voterId)
+          && request.resource.data.userId == voterId
+          && request.resource.data.value in [1, -1];
+        allow delete: if isSelf(voterId);
+      }
+    }
+
+    // ---------- answers ----------
+
+    match /answers/{answerId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.voteCount == 0
+        && request.resource.data.get('isAccepted', false) == false
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && !changes(['userId', 'questionId', 'voteCount', 'isAccepted', 'createdAt']);
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+
+      match /votes/{voterId} {
+        allow read: if isSelf(voterId);
+        allow create, update: if isSelf(voterId)
+          && request.resource.data.userId == voterId
+          && request.resource.data.value in [1, -1];
+        allow delete: if isSelf(voterId);
+      }
+    }
+
+    // ---------- friendships ----------
+
+    match /friendships/{friendshipId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participants;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.friendId != request.auth.uid
+        && request.resource.data.participants.size() == 2
+        && request.resource.data.participants.hasAll([request.resource.data.userId, request.resource.data.friendId])
+        && request.resource.data.status == 'pending';
+      // Only the person who received the request can accept it. Rejecting is a delete.
+      allow update: if signedIn()
+        && resource.data.friendId == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'accepted'
+        && changesOnly(['status']);
+      allow delete: if signedIn() && request.auth.uid in resource.data.participants;
+    }
+
+    // ---------- conversations and messages ----------
+    // Messaging is not gated behind friendship: a student can message a
+    // project owner from the project page.
+
+    match /conversations/{conversationId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participants;
+      allow create: if signedIn()
+        && request.resource.data.participants.size() == 2
+        && request.auth.uid in request.resource.data.participants;
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.participants
+        && !changes(['participants', 'conversationId']);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if signedIn()
+          && request.auth.uid in get(conversationPath(conversationId)).data.participants;
+        allow create: if signedIn()
+          && request.auth.uid in getAfter(conversationPath(conversationId)).data.participants
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+        // The recipient marks a message as read
+        allow update: if signedIn()
+          && request.auth.uid in get(conversationPath(conversationId)).data.participants
+          && resource.data.senderId != request.auth.uid
+          && changesOnly(['isRead']);
+        allow delete: if false;
+      }
+    }
+
+    // ---------- notifications ----------
+    // Created only by Cloud Functions through the shared notification helper.
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if false;
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && changesOnly(['isRead']);
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ---------- AI requests ----------
+    // Written only by the PatchCollab AI function. The daily cap is counted here,
+    // so a student must never be able to delete or edit their own records.
+
+    match /aiRequests/{requestId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+  }
+}
