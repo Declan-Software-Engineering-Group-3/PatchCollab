@@ -5,6 +5,7 @@ import '../data/answer_model.dart';
 import '../data/question_model.dart';
 import '../providers/community_providers.dart';
 import '../widgets/vote_buttons.dart';
+import '../community_theme.dart';
 
 class QuestionDetailScreen extends ConsumerStatefulWidget {
   final String questionId;
@@ -88,35 +89,40 @@ class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
     final answersAsync = ref.watch(answersProvider(widget.questionId));
     final userId = ref.watch(currentUserIdProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Question')),
-      body: questionAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) =>
-            Center(child: Text('Could not load question: $err')),
-        data: (question) {
-          if (question == null) {
-            return const Center(child: Text('This question no longer exists.'));
-          }
+    return Theme(
+      data: communityTheme,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Question')),
+        body: questionAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) =>
+              Center(child: Text('Could not load question: $err')),
+          data: (question) {
+            if (question == null) {
+              return const Center(
+                child: Text('This question no longer exists.'),
+              );
+            }
 
-          final isAuthor = question.userId == userId;
+            final isAuthor = question.userId == userId;
 
-          return Column(
-            children: [
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildQuestion(question),
-                    const Divider(height: 32),
-                    ..._buildAnswers(answersAsync, question, isAuthor),
-                  ],
+            return Column(
+              children: [
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _buildQuestion(question),
+                      const Divider(height: 32),
+                      ..._buildAnswers(answersAsync, question, isAuthor),
+                    ],
+                  ),
                 ),
-              ),
-              _buildAnswerBox(),
-            ],
-          );
-        },
+                _buildAnswerBox(),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
