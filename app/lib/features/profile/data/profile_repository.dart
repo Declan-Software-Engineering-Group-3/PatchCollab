@@ -14,4 +14,18 @@ class ProfileRepository {
 
     return _firestore.collection('users').doc(user.uid).snapshots();
   }
+
+  Future<void> updateProfile({required String displayName}) async {
+    final user = _auth.currentUser;
+
+    if (user == null) {
+      throw Exception('No authenticated user.');
+    }
+
+    final trimmedDisplayName = displayName.trim();
+
+    await _firestore.collection('users').doc(user.uid).update({
+      'displayName': trimmedDisplayName,
+    });
+  }
 }

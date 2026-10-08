@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -107,11 +108,8 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 6),
 
                 Text(
-                  email,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
-                    fontSize: 18,
-                  ),
+                  'Software Engineering Student',
+                  style: TextStyle(color: Colors.white70, fontSize: 18),
                   textAlign: TextAlign.center,
                 ),
 
@@ -121,7 +119,17 @@ class ProfileScreen extends ConsumerWidget {
                   width: double.infinity,
                   height: 52,
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditProfileScreen(
+                            displayName: displayName,
+                            email: email,
+                          ),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.edit_outlined, size: 24),
                     label: const Text(
                       'Edit Profile',
@@ -180,16 +188,29 @@ class ProfileScreen extends ConsumerWidget {
 
                 const SizedBox(height: 28),
 
-                TextButton.icon(
-                  onPressed: () async {
-                    await ref.read(authProvider.notifier).signOut();
-                  },
-                  icon: const Icon(Icons.logout, size: 24),
-                  label: const Text(
-                    'Sign Out',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await ref.read(authProvider.notifier).signOut();
+                    },
+                    icon: const Icon(Icons.logout, size: 24),
+                    label: const Text(
+                      'Sign Out',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFFF4D4D),
+                      side: const BorderSide(color: Color(0xFFFF4D4D)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                   ),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
                 ),
               ],
             ),
