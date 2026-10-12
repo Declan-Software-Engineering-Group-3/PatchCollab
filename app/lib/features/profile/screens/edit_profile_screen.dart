@@ -144,21 +144,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               controller: _emailController,
               readOnly: true,
               keyboardType: TextInputType.emailAddress,
-              style: const TextStyle(color: Colors.white, fontSize: 20),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 20,
+              ),
               decoration: InputDecoration(
-                hintText: 'Enter your new email address',
+                hintText: 'Email address cannot be changed',
                 hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
+                  color: Colors.white.withValues(alpha: 0.35),
                 ),
                 filled: true,
-                fillColor: const Color(0xFF0D2928),
+                fillColor: const Color(0xFF091F1F),
+                prefixIcon: const Icon(
+                  Icons.lock_outline,
+                  color: Color(0xFF668582),
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFF164C49)),
+                  borderSide: const BorderSide(color: Color(0xFF123A38)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: Color(0xFF22D3C5)),
+                  borderSide: const BorderSide(color: Color(0xFF123A38)),
                 ),
               ),
             ),
