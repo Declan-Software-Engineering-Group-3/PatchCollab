@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/project_options.dart';
 import '../providers/projects_provider.dart';
 import '../widgets/project_card.dart';
-
-// these come from SCHEMA.md's filter fields. if the team adds more values
-// later, this is the only place that needs updating.
-const _technologies = ['Java', 'Python', 'React', 'Android', 'Flutter'];
-const _difficulties = ['Beginner', 'Intermediate', 'Advanced'];
-const _categories = ['Mobile', 'Web', 'AI', 'Game', 'Other'];
+import 'create_project_screen.dart';
+import 'project_detail_screen.dart';
 
 class BrowseProjectsScreen extends ConsumerWidget {
   const BrowseProjectsScreen({super.key});
@@ -20,6 +17,17 @@ class BrowseProjectsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Projects')),
+      // a self-contained way into the create form from this feature. the
+      // app shell's own create button can push the same screen later.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CreateProjectScreen()),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Create'),
+      ),
       body: Column(
         children: [
           Padding(
@@ -29,21 +37,21 @@ class BrowseProjectsScreen extends ConsumerWidget {
               children: [
                 _FilterRow(
                   label: 'Technology',
-                  options: _technologies,
+                  options: projectTechnologies,
                   selected: filters.technology,
                   onSelected: notifier.setTechnology,
                 ),
                 const SizedBox(height: 8),
                 _FilterRow(
                   label: 'Difficulty',
-                  options: _difficulties,
+                  options: projectDifficulties,
                   selected: filters.difficulty,
                   onSelected: notifier.setDifficulty,
                 ),
                 const SizedBox(height: 8),
                 _FilterRow(
                   label: 'Category',
-                  options: _categories,
+                  options: projectCategories,
                   selected: filters.category,
                   onSelected: notifier.setCategory,
                 ),
@@ -66,8 +74,13 @@ class BrowseProjectsScreen extends ConsumerWidget {
                     return ProjectCard(
                       project: project,
                       onTap: () {
-                        // navigation to the detail screen plugs in here once
-                        // that screen exists (item #3 on the build order).
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ProjectDetailScreen(
+                              projectId: project.projectId,
+                            ),
+                          ),
+                        );
                       },
                     );
                   },

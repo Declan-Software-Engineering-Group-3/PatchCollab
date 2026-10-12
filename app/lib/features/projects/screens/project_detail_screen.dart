@@ -1,11 +1,29 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/projects_provider.dart';
+import 'pending_requests_screen.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projectId;
 
   const ProjectDetailScreen({super.key, required this.projectId});
+
+  /// opens the repository in the browser or the github app. a link saved
+  /// without a scheme (github.com/...) gets https added first.
+  Future<void> _openGithub(BuildContext context, String url) async {
+    final fixed = url.startsWith('http') ? url : 'https://$url';
+    final opened = await launchUrl(
+      Uri.parse(fixed),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open that link.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,6 +38,8 @@ class ProjectDetailScreen extends ConsumerWidget {
           if (project == null) {
             return const Center(child: Text('This project no longer exists.'));
           }
+
+          final isOwner = FirebaseAuth.instance.currentUser?.uid == project.ownerId;
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -76,9 +96,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                     leading: const Icon(Icons.link),
                     title: Text(project.githubUrl!),
                     trailing: FilledButton.tonal(
-                      // opening the url plugs in here once the github
-                      // integration teammate's helper is ready.
-                      onPressed: () {},
+                      onPressed: () => _openGithub(context, project.githubUrl!),
                       child: const Text('Open GitHub'),
                     ),
                   ),
@@ -86,18 +104,68 @@ class ProjectDetailScreen extends ConsumerWidget {
               ],
 
               const SizedBox(height: 24),
-              FilledButton(
-                // real join-request logic is item #5 on the build order,
-                // writes to membershipRequests. this is the visual stub.
-                onPressed: () {},
-                child: const Text('Request to Join'),
+              if (isOwner)
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PendingRequestsScreen(projectId: projectId),
+                      ),
+                    );
+                  },
+                  child: const Text('Manage Join Requests'),
+                )
+              else
+                Consumer(
+                builder: (context, ref, _) {
+                  final statusAsync = ref.watch(myMembershipStatusProvider(projectId));
+                  final joinState = ref.watch(joinRequestProvider);
+
+                  return statusAsync.when(
+                    data: (status) {
+                      if (status == 'pending') {
+                        return const FilledButton(
+                          onPressed: null,
+                          child: Text('Request Pending'),
+                        );
+                      }
+                      if (status == 'approved') {
+                        return const FilledButton(
+                          onPressed: null,
+                          child: Text('Already a Member'),
+                        );
+                      }
+                      return FilledButton(
+                        onPressed: joinState.isLoading
+                            ? null
+                            : () => ref
+                                .read(joinRequestProvider.notifier)
+                                .requestToJoin(projectId),
+                        child: joinState.isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Request to Join'),
+                      );
+                    },
+                    loading: () => const FilledButton(
+                      onPressed: null,
+                      child: Text('Request to Join'),
+                    ),
+                    error: (err, stack) => Text('Could not check membership: $err'),
+                  );
+                },
               ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                // plugs into the messaging feature once it exists.
-                onPressed: () {},
-                child: const Text('Message Owner'),
-              ),
+              if (!isOwner) ...[
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  // plugs into the messaging feature once it exists.
+                  onPressed: () {},
+                  child: const Text('Message Owner'),
+                ),
+              ],
             ],
           );
         },
