@@ -11,7 +11,12 @@ const db = getFirestore();
 type NotificationType =
   | "friendRequest"
   | "friendAccepted"
-  | "newMessage";
+  | "newMessage"
+  | "newAnswer"
+  | "answerAccepted"
+  | "joinRequest"
+  | "joinApproved"
+  | "joinRejected";
 
 interface NotificationPayload {
   userId: string;
