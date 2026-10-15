@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:image_picker/image_picker.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,11 +9,65 @@ import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import 'edit_profile_screen.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _isUploadingImage = false;
+
+  Future<void> _pickAndUploadProfileImage() async {
+    final picker = ImagePicker();
+
+    try {
+      final pickedImage = await picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedImage == null || !mounted) return;
+
+      final extension = pickedImage.path.split('.').last.toLowerCase();
+
+      if (!['png', 'jpg', 'jpeg'].contains(extension)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a PNG or JPEG image')),
+        );
+        return;
+      }
+
+      setState(() {
+        _isUploadingImage = true;
+      });
+
+      await ref
+          .read(profileRepositoryProvider)
+          .uploadProfileImage(File(pickedImage.path));
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile picture updated successfully!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to upload profile picture. Try again.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
@@ -77,20 +135,62 @@ class ProfileScreen extends ConsumerWidget {
               children: [
                 const SizedBox(height: 10),
 
-                CircleAvatar(
-                  radius: 54,
-                  backgroundColor: const Color(0xFF123A38),
-                  backgroundImage:
-                      profileImageUrl != null && profileImageUrl.isNotEmpty
-                      ? NetworkImage(profileImageUrl)
-                      : null,
-                  child: profileImageUrl == null || profileImageUrl.isEmpty
-                      ? const Icon(
-                          Icons.person,
-                          size: 58,
-                          color: Color(0xFF22D3C5),
-                        )
-                      : null,
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: _isUploadingImage
+                          ? null
+                          : _pickAndUploadProfileImage,
+                      child: CircleAvatar(
+                        radius: 54,
+                        backgroundColor: const Color(0xFF123A38),
+                        backgroundImage:
+                            profileImageUrl != null &&
+                                profileImageUrl.isNotEmpty
+                            ? NetworkImage(profileImageUrl)
+                            : null,
+                        child: _isUploadingImage
+                            ? const SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  color: Color(0xFF22D3C5),
+                                ),
+                              )
+                            : profileImageUrl == null || profileImageUrl.isEmpty
+                            ? const Icon(
+                                Icons.person,
+                                size: 58,
+                                color: Color(0xFF22D3C5),
+                              )
+                            : null,
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Material(
+                        color: const Color(0xFF22D3C5),
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: _isUploadingImage
+                              ? null
+                              : _pickAndUploadProfileImage,
+                          customBorder: const CircleBorder(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.edit,
+                              size: 20,
+                              color: Color(0xFF061C1C),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 16),
