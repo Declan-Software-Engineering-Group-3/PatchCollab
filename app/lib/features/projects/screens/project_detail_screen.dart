@@ -19,6 +19,80 @@ class _GithubEdit {
   const _GithubEdit(this.url);
 }
 
+/// the dialog for setting the github link. it owns its text controller, so the
+/// controller is only disposed once the dialog is really gone from the screen.
+class _GithubDialog extends StatefulWidget {
+  final String? current;
+
+  const _GithubDialog({required this.current});
+
+  @override
+  State<_GithubDialog> createState() => _GithubDialogState();
+}
+
+class _GithubDialogState extends State<_GithubDialog> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.current ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final text = _controller.text.trim();
+
+    // an empty box clears the link.
+    if (text.isEmpty) {
+      Navigator.of(context).pop(const _GithubEdit(null));
+      return;
+    }
+    if (!_githubPattern.hasMatch(text)) {
+      setState(() {
+        _errorText = 'Use a link like github.com/owner/repository';
+      });
+      return;
+    }
+
+    final withScheme = text.startsWith('http') ? text : 'https://$text';
+    Navigator.of(context)
+        .pop(_GithubEdit(withScheme.replaceAll(RegExp(r'/+$'), '')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: communityTheme,
+      child: AlertDialog(
+        title: const Text('GitHub repository'),
+        content: TextField(
+          controller: _controller,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(
+            hintText: 'github.com/owner/repository',
+            errorText: _errorText,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(onPressed: _save, child: const Text('Save')),
+        ],
+      ),
+    );
+  }
+}
+
 class ProjectDetailScreen extends ConsumerWidget {
   final String projectId;
 
@@ -46,58 +120,10 @@ class ProjectDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     String? current,
   ) async {
-    final controller = TextEditingController(text: current ?? '');
-    String? errorText;
-
     final result = await showDialog<_GithubEdit>(
       context: context,
-      builder: (dialogContext) => Theme(
-        data: communityTheme,
-        child: StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            title: const Text('GitHub repository'),
-            content: TextField(
-              controller: controller,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(
-                hintText: 'github.com/owner/repository',
-                errorText: errorText,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final text = controller.text.trim();
-                  if (text.isEmpty) {
-                    Navigator.of(dialogContext).pop(const _GithubEdit(null));
-                    return;
-                  }
-                  if (!_githubPattern.hasMatch(text)) {
-                    setState(() {
-                      errorText = 'Use a link like github.com/owner/repository';
-                    });
-                    return;
-                  }
-                  final withScheme = text.startsWith('http')
-                      ? text
-                      : 'https://$text';
-                  Navigator.of(
-                    dialogContext,
-                  ).pop(_GithubEdit(withScheme.replaceAll(RegExp(r'/+$'), '')));
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (_) => _GithubDialog(current: current),
     );
-    controller.dispose();
     if (result == null) return;
 
     await ref
