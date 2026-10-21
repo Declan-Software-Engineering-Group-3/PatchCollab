@@ -1,12 +1,7 @@
 import {onDocumentCreated, onDocumentUpdated} from "firebase-functions/v2/firestore";
-import {initializeApp} from "firebase-admin/app";
-import {getFirestore, FieldValue} from "firebase-admin/firestore";
+import {FieldValue} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
-
-// Initialize Firebase Admin SDK before using Firestore or Messaging.
-initializeApp();
-
-const db = getFirestore();
+import {db} from "../admin";
 
 type NotificationType =
   | "friendRequest"
