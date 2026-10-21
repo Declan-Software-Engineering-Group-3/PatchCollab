@@ -89,7 +89,9 @@ class MembershipRequest {
     required this.createdAt,
   });
 
-  factory MembershipRequest.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory MembershipRequest.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data()!;
     return MembershipRequest(
       requestId: doc.id,
