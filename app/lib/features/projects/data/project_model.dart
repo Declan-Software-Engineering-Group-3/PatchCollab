@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
+/// matches a document in the projects collection in schema.md.
 class ProjectModel {
   final String projectId;
   final String ownerId;
@@ -35,7 +35,7 @@ class ProjectModel {
       difficulty: data['difficulty'] as String,
       category: data['category'] as String,
       githubUrl: data['githubUrl'] as String?,
-      createdAt: data['createdAt'] as Timestamp,
+      createdAt: (data['createdAt'] as Timestamp?) ?? Timestamp.now(),
     );
   }
 
@@ -53,7 +53,7 @@ class ProjectModel {
   }
 }
 
-
+/// matches a document in the members subcollection in schema.md.
 class ProjectMember {
   final String userId;
   final String role; // "owner" or "member", lowercase in firestore
@@ -70,12 +70,12 @@ class ProjectMember {
     return ProjectMember(
       userId: doc.id,
       role: data['role'] as String,
-      joinedAt: data['joinedAt'] as Timestamp,
+      joinedAt: (data['joinedAt'] as Timestamp?) ?? Timestamp.now(),
     );
   }
 }
 
-/// matches projects/{projectId}/membershipRequests/{requestId} in SCHEMA.md.
+/// matches a document in the join requests subcollection in schema.md.
 class MembershipRequest {
   final String requestId;
   final String userId;
@@ -89,13 +89,15 @@ class MembershipRequest {
     required this.createdAt,
   });
 
-  factory MembershipRequest.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory MembershipRequest.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data()!;
     return MembershipRequest(
       requestId: doc.id,
       userId: data['userId'] as String,
       status: data['status'] as String,
-      createdAt: data['createdAt'] as Timestamp,
+      createdAt: (data['createdAt'] as Timestamp?) ?? Timestamp.now(),
     );
   }
 }
