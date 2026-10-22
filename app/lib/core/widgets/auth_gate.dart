@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/screens/splash_screen.dart';
-import '../../features/community/screens/community_screen.dart';
+import 'main_shell.dart';
 import '../providers/auth_state_provider.dart';
 
-// signed in users go to community, everyone else starts at the splash screen.
+// signed in users go to the main shell, everyone else starts at the splash screen.
 // anonymous users count as signed out (the dev sign in in community is anonymous)
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -25,7 +25,7 @@ class AuthGate extends ConsumerWidget {
     return authState.when(
       data: (user) {
         if (user != null && !user.isAnonymous) {
-          return const CommunityScreen();
+          return const MainShell();
         }
         return const SplashScreen();
       },

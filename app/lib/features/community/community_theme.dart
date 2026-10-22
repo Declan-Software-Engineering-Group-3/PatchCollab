@@ -64,6 +64,18 @@ final communityTheme = ThemeData(
   textButtonTheme: TextButtonThemeData(
     style: TextButton.styleFrom(foregroundColor: _cyan),
   ),
+  navigationBarTheme: NavigationBarThemeData(
+    backgroundColor: _background,
+    indicatorColor: _cyan.withValues(alpha: 0.25),
+    iconTheme: WidgetStateProperty.resolveWith((states) {
+      final selected = states.contains(WidgetState.selected);
+      return IconThemeData(color: selected ? _cyan : Colors.white70);
+    }),
+    labelTextStyle: WidgetStateProperty.resolveWith((states) {
+      final selected = states.contains(WidgetState.selected);
+      return TextStyle(fontSize: 12, color: selected ? _cyan : Colors.white70);
+    }),
+  ),
   floatingActionButtonTheme: const FloatingActionButtonThemeData(
     backgroundColor: _cyan,
     foregroundColor: _background,
