@@ -173,7 +173,10 @@ All in region `africa-south1`, all require sign in. Arav owns the server side (t
 | exchangeGithubCode | `code` | `login` | Exchanges the OAuth code and stores the token in `githubTokens/{userId}`. Never returns the token |
 | listGithubRepos | none | `repos`: list of `{owner, name, defaultBranch, private}` | Fails with `failed-precondition` when the student has not connected, which the app treats as "show Connect GitHub" |
 | disconnectGithub | none | none | Revokes the token at GitHub, deletes `githubTokens/{userId}`, and clears the linked repository fields on that student's projects and questions |
+| getGithubDiff | `owner`, `repo`, `kind` (commit, compare or pull), `value` (sha, `base...head`, or PR number) | `files`: list of `{path, patch}` | `patch` is GitHub's per-file unified diff and may be missing for binary or huge files. Used by the diff viewer (task 55) |
 
 The app requests no OAuth scope, so access is public repositories only (see the ethics note in the build task list). The redirect URI registered on the GitHub OAuth App must be `patchcollab://github-callback`.
 
 Linked repository fields on `projects` and `questions` (written by the owner from the app): `githubUrl`, `githubOwner`, `githubRepo`, `githubDefaultBranch`, `githubLinkedAt` (server timestamp).
+
+Review request diff fields on `questions`: `githubDiffKind` and `githubDiffValue`. Answers pinned to a diff line carry `anchorPath`, `anchorLine` and `anchorNewSide` (false when the line only exists in the old file).

@@ -11,7 +11,7 @@ List<DiffFile> parseUnifiedDiff(String diff) {
 
   void flush() {
     if (path != null) {
-      files.add(parsePatch(path,patch.join('\n')));
+      files.add(parsePatch(path, patch.join('\n')));
     }
     patch = [];
   }

@@ -3,6 +3,9 @@ import 'dart:math';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
+import '../../../core/models/diff.dart';
+import '../../../core/utils/diff_parser.dart';
+import 'diff_source.dart';
 import 'github_repo_model.dart';
 
 // Not a secret. Pass with --dart-define=GITHUB_CLIENT_ID=... when running.
@@ -69,6 +72,24 @@ class GithubRepository {
     return (data['repos'] as List)
         .map((r) => GithubRepo.fromMap(Map<String, dynamic>.from(r as Map)))
         .toList();
+  }
+
+  Future<List<DiffFile>> fetchDiff({
+    required String owner,
+    required String repo,
+    required DiffSource source,
+  }) async {
+    final data = await _call('getGithubDiff', {
+      'owner': owner,
+      'repo': repo,
+      'kind': source.kind.name,
+      'value': source.value,
+    });
+    return (data['files'] as List).map((f) {
+      final file = Map<String, dynamic>.from(f as Map);
+      // GitHub leaves patch out for binary or very large files
+      return parsePatch(file['path'] as String, file['patch'] as String? ?? '');
+    }).toList();
   }
 
   /// Revokes the token and clears the student's stored repository links.

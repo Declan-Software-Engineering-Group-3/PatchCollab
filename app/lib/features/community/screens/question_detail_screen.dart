@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/widgets/diff_viewer.dart';
+import '../../github/providers/github_providers.dart';
 import '../data/answer_model.dart';
 import '../data/question_model.dart';
 import '../providers/community_providers.dart';
@@ -21,6 +23,9 @@ class QuestionDetailScreen extends ConsumerStatefulWidget {
 class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
   final _answerController = TextEditingController();
   bool _posting = false;
+  // line the next answer will be pinned to, and the line currently highlighted
+  DiffAnchor? _pending;
+  DiffAnchor? _highlight;
 
   @override
   void dispose() {
@@ -45,8 +50,12 @@ class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
             userId: ref.read(currentUserIdProvider),
             questionId: widget.questionId,
             content: text,
+            anchorPath: _pending?.path,
+            anchorLine: _pending?.line,
+            anchorNewSide: _pending?.newSide ?? true,
           );
       _answerController.clear();
+      _pending = null;
     } catch (e) {
       if (mounted) _showError('Could not post answer: $e');
     }
@@ -168,6 +177,10 @@ class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
                   label: const Text('View repository on GitHub'),
                 ),
               ],
+              if (question.hasDiff) ...[
+                const SizedBox(height: 12),
+                _buildDiff(question),
+              ],
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -186,6 +199,49 @@ class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildDiff(Question question) {
+    final source = question.diffSource!;
+    final diffAsync = ref.watch(
+      githubDiffProvider((
+        question.githubOwner!,
+        question.githubRepo!,
+        source.kind,
+        source.value,
+      )),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(source.label, style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        diffAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (err, stack) => Text(
+            'Could not load the diff: ${err.toString().replaceFirst('Exception: ', '')}',
+          ),
+          data: (files) => DiffViewer.files(
+            files: files,
+            highlight: _pending ?? _highlight,
+            onLineTap: (file, line, {required newSide}) {
+              setState(() {
+                _pending = DiffAnchor(
+                  path: file.path,
+                  line: (newSide ? line.newNumber : line.oldNumber)!,
+                  newSide: newSide,
+                );
+              });
+            },
+          ),
+        ),
+        const Text('Tap a line to pin your answer to it.'),
       ],
     );
   }
@@ -218,6 +274,15 @@ class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
             (answer) => _AnswerTile(
               answer: answer,
               canAccept: isAuthor && !question.isAnswered,
+              onShowAnchor: answer.isAnchored
+                  ? () => setState(() {
+                      _highlight = DiffAnchor(
+                        path: answer.anchorPath!,
+                        line: answer.anchorLine!,
+                        newSide: answer.anchorNewSide,
+                      );
+                    })
+                  : null,
               onAccept: () => _accept(answer.answerId),
               onVote: (value, currentVote) => _vote(
                 collection: 'answers',
@@ -236,23 +301,35 @@ class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: TextField(
-                controller: _answerController,
-                minLines: 1,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  hintText: 'Write an answer',
-                  border: OutlineInputBorder(),
-                ),
+            if (_pending != null)
+              InputChip(
+                avatar: const Icon(Icons.push_pin, size: 16),
+                label: Text('${_pending!.path}:${_pending!.line}'),
+                onDeleted: () => setState(() => _pending = null),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: _posting ? null : _postAnswer,
-              icon: const Icon(Icons.send),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _answerController,
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: 'Write an answer',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  onPressed: _posting ? null : _postAnswer,
+                  icon: const Icon(Icons.send),
+                ),
+              ],
             ),
           ],
         ),
@@ -265,11 +342,13 @@ class _AnswerTile extends ConsumerWidget {
   final Answer answer;
   final bool canAccept;
   final VoidCallback onAccept;
+  final VoidCallback? onShowAnchor;
   final void Function(int value, int? currentVote) onVote;
 
   const _AnswerTile({
     required this.answer,
     required this.canAccept,
+    required this.onShowAnchor,
     required this.onAccept,
     required this.onVote,
   });
@@ -301,6 +380,14 @@ class _AnswerTile extends ConsumerWidget {
                       const Chip(
                         avatar: Icon(Icons.check_circle, size: 18),
                         label: Text('Accepted'),
+                      ),
+                    if (onShowAnchor != null)
+                      ActionChip(
+                        avatar: const Icon(Icons.push_pin, size: 16),
+                        label: Text(
+                          '${answer.anchorPath}:${answer.anchorLine}',
+                        ),
+                        onPressed: onShowAnchor,
                       ),
                     Text(answer.content),
                     const SizedBox(height: 8),
