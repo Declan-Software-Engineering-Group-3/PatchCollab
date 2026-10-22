@@ -163,3 +163,17 @@ Declared in `firestore.indexes.json`: answers (`questionId` + `createdAt`, both 
 ## Cloud Functions calls
 
 The AI function is a callable in region `africa-south1`, so the client must use `FirebaseFunctions.instanceFor(region: 'africa-south1')`. It takes `prompt` (string) and `type` (review, summarise or explain) and returns `requestId`, `response` and `remaining`. It fails with `resource-exhausted` when the student has used their 20 requests for the day.
+
+## GitHub callables (proposed by the app side, tasks 51, 57, 62)
+
+All in region `africa-south1`, all require sign in. Arav owns the server side (tasks 49 to 56), so change these names if needed and tell Declan.
+
+| Callable | Input | Returns | Notes |
+|---|---|---|---|
+| exchangeGithubCode | `code` | `login` | Exchanges the OAuth code and stores the token in `githubTokens/{userId}`. Never returns the token |
+| listGithubRepos | none | `repos`: list of `{owner, name, defaultBranch, private}` | Fails with `failed-precondition` when the student has not connected, which the app treats as "show Connect GitHub" |
+| disconnectGithub | none | none | Revokes the token at GitHub, deletes `githubTokens/{userId}`, and clears the linked repository fields on that student's projects and questions |
+
+The app requests no OAuth scope, so access is public repositories only (see the ethics note in the build task list). The redirect URI registered on the GitHub OAuth App must be `patchcollab://github-callback`.
+
+Linked repository fields on `projects` and `questions` (written by the owner from the app): `githubUrl`, `githubOwner`, `githubRepo`, `githubDefaultBranch`, `githubLinkedAt` (server timestamp).
