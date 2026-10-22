@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class GithubRepo {
   final String owner;
   final String name;
@@ -29,6 +31,7 @@ class GithubRepo {
     'githubOwner': owner,
     'githubRepo': name,
     'githubDefaultBranch': defaultBranch,
+    'githubLinkedAt': FieldValue.serverTimestamp(),
   };
 }
 
