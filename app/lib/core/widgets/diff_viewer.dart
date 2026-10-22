@@ -5,8 +5,11 @@ import '../utils/diff_parser.dart';
 
 /// Called when a student taps a line. Used to anchor an answer to a line.
 /// [newSide] is false for removed lines, which only exist in the old file.
-typedef DiffLineTap =
-    void Function(DiffFile file, DiffLine line, {required bool newSide});
+typedef DiffLineTap = void Function(
+  DiffFile file,
+  DiffLine line, {
+  required bool newSide,
+});
 
 /// A line anchor to highlight, as stored on an answer.
 class DiffAnchor {
@@ -220,7 +223,9 @@ class _DiffLineRow extends StatelessWidget {
             _Gutter(line.oldNumber),
             _Gutter(line.newNumber),
             Text(
-              line.type == DiffLineType.hunk ? line.text : '$marker${line.text}',
+              line.type == DiffLineType.hunk
+                  ? line.text
+                  : '$marker${line.text}',
               style: mono.copyWith(
                 color: line.type == DiffLineType.hunk ? Colors.white60 : null,
               ),

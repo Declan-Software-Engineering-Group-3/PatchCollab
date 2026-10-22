@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../github/data/diff_source.dart';
+
 class Question {
   final String questionId;
   final String userId;
@@ -10,6 +12,9 @@ class Question {
   final String category;
   final String type; // "question" or "reviewRequest"
   final String? githubUrl;
+  final String? githubOwner;
+  final String? githubRepo;
+  final DiffSource? diffSource;
   final int voteCount;
   final String? acceptedAnswerId;
   final Timestamp createdAt;
@@ -26,6 +31,9 @@ class Question {
     this.codeSnippet,
     this.language,
     this.githubUrl,
+    this.githubOwner,
+    this.githubRepo,
+    this.diffSource,
     this.acceptedAnswerId,
   });
 
@@ -41,12 +49,21 @@ class Question {
       category: data['category'] as String,
       type: data['type'] as String,
       githubUrl: data['githubUrl'] as String?,
+      githubOwner: data['githubOwner'] as String?,
+      githubRepo: data['githubRepo'] as String?,
+      diffSource: DiffSource.fromFields(
+        data['githubDiffKind'] as String?,
+        data['githubDiffValue'] as String?,
+      ),
       voteCount: (data['voteCount'] as num?)?.toInt() ?? 0,
       acceptedAnswerId: data['acceptedAnswerId'] as String?,
       // null until the server timestamp comes back
       createdAt: data['createdAt'] as Timestamp? ?? Timestamp.now(),
     );
   }
+
+  bool get hasDiff =>
+      diffSource != null && githubOwner != null && githubRepo != null;
 
   bool get isAnswered => acceptedAnswerId != null;
 }
