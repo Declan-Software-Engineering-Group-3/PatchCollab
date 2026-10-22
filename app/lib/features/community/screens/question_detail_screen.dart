@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../data/answer_model.dart';
 import '../data/question_model.dart';
@@ -155,6 +156,17 @@ class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
               if (question.codeSnippet != null) ...[
                 const SizedBox(height: 12),
                 _CodeBlock(code: question.codeSnippet!),
+              ],
+              if (question.githubUrl != null) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => launchUrl(
+                    Uri.parse(question.githubUrl!),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text('View repository on GitHub'),
+                ),
               ],
               const SizedBox(height: 12),
               Wrap(

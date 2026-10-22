@@ -67,6 +67,12 @@ class _QuestionList extends ConsumerWidget {
             child: Row(
               children: [
                 FilterChip(
+                  label: const Text('Review requests'),
+                  selected: filters.reviewRequestsOnly,
+                  onSelected: notifier.setReviewRequestsOnly,
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
                   label: const Text('Unanswered'),
                   selected: filters.unansweredOnly,
                   onSelected: notifier.setUnansweredOnly,
@@ -96,7 +102,13 @@ class _QuestionList extends ConsumerWidget {
           child: questionsAsync.when(
             data: (questions) {
               if (questions.isEmpty) {
-                return const Center(child: Text('No questions yet.'));
+                return Center(
+                  child: Text(
+                    filters.reviewRequestsOnly
+                        ? 'No review requests yet.'
+                        : 'No questions yet.',
+                  ),
+                );
               }
               return ListView.separated(
                 padding: const EdgeInsets.all(16),
