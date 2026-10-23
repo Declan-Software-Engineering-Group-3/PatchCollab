@@ -82,9 +82,10 @@ class _MyProjectsScreenState extends ConsumerState<MyProjectsScreen> {
         backgroundColor: _background,
         foregroundColor: _text,
         elevation: 0,
+        iconTheme: const IconThemeData(color: _text, size: 33),
         title: const Text(
           'My Projects',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
       ),
       body: SafeArea(
@@ -100,8 +101,8 @@ class _MyProjectsScreenState extends ConsumerState<MyProjectsScreen> {
                   const Icon(Icons.cloud_off_outlined, color: _muted, size: 36),
                   const SizedBox(height: 12),
                   const Text(
-                    'Unable to load your projects.',
-                    style: TextStyle(color: _text, fontSize: 20),
+                    'Unable to load your projects',
+                    style: TextStyle(color: _text, fontSize: 24),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
@@ -137,8 +138,8 @@ class _MyProjectsScreenState extends ConsumerState<MyProjectsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
                   const Text(
-                    'Your teams and your work',
-                    style: TextStyle(color: _muted, fontSize: 18),
+                    'Your teams and projects',
+                    style: TextStyle(color: _muted, fontSize: 21),
                   ),
                   const SizedBox(height: 18),
 
@@ -155,7 +156,7 @@ class _MyProjectsScreenState extends ConsumerState<MyProjectsScreen> {
                       Expanded(
                         child: _SummaryCard(
                           icon: Icons.person_outline_rounded,
-                          label: 'Created by you',
+                          label: 'Owned by you',
                           count: created.length,
                         ),
                       ),
@@ -163,10 +164,10 @@ class _MyProjectsScreenState extends ConsumerState<MyProjectsScreen> {
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'Your projects',
+                    'Your Projects',
                     style: TextStyle(
                       color: _text,
-                      fontSize: 22,
+                      fontSize: 27,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -261,18 +262,18 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: _accent, size: 22),
+          Icon(icon, color: _accent, size: 48),
           const SizedBox(height: 10),
           Text(
             '$count',
             style: const TextStyle(
               color: _text,
-              fontSize: 26,
+              fontSize: 32,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 3),
-          Text(label, style: const TextStyle(color: _muted, fontSize: 18)),
+          Text(label, style: const TextStyle(color: _muted, fontSize: 22)),
         ],
       ),
     );
@@ -301,7 +302,7 @@ class _FilterButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 5),
+          padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 5),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: selected ? _accent : _border),
@@ -309,7 +310,7 @@ class _FilterButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 19, color: selected ? _accent : _muted),
+              Icon(icon, size: 23, color: selected ? _accent : _muted),
               const SizedBox(width: 5),
               Flexible(
                 child: Text(
@@ -318,7 +319,7 @@ class _FilterButton extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: selected ? _accent : _muted,
-                    fontSize: 18,
+                    fontSize: 21,
                     fontWeight: selected ? FontWeight.bold : FontWeight.w500,
                   ),
                 ),
@@ -458,12 +459,16 @@ class _EmptyProjects extends StatelessWidget {
           Icon(
             Icons.folder_open_outlined,
             color: _muted.withValues(alpha: 0.8),
-            size: 42,
+            size: 72,
           ),
           const SizedBox(height: 12),
           const Text(
-            'No projects here yet. Join one.',
-            style: TextStyle(color: _muted, fontSize: 18),
+            'No projects here yet, Join one',
+            style: TextStyle(
+              color: _muted,
+              fontSize: 25,
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
