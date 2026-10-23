@@ -142,6 +142,14 @@ class _DiffFileCardState extends State<_DiffFileCard> {
           ),
           if (_expanded) ...[
             const Divider(height: 1),
+            if (file.note != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  file.note!,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: IntrinsicWidth(

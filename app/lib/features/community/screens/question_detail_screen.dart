@@ -205,14 +205,7 @@ class _QuestionDetailScreenState extends ConsumerState<QuestionDetailScreen> {
 
   Widget _buildDiff(Question question) {
     final source = question.diffSource!;
-    final diffAsync = ref.watch(
-      githubDiffProvider((
-        question.githubOwner!,
-        question.githubRepo!,
-        source.kind,
-        source.value,
-      )),
-    );
+    final diffAsync = ref.watch(githubDiffProvider(question.questionId));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

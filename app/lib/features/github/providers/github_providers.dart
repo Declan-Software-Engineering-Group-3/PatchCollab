@@ -2,7 +2,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/diff.dart';
-import '../data/diff_source.dart';
 import '../data/github_repo_model.dart';
 import '../data/github_repository.dart';
 
@@ -18,9 +17,6 @@ final githubReposProvider = FutureProvider.autoDispose<List<GithubRepo>>((ref) {
 });
 
 final githubDiffProvider = FutureProvider.autoDispose
-    .family<List<DiffFile>, (String, String, DiffKind, String)>((ref, key) {
-      final (owner, repo, kind, value) = key;
-      return ref
-          .watch(githubRepositoryProvider)
-          .fetchDiff(owner: owner, repo: repo, source: DiffSource(kind, value));
+    .family<List<DiffFile>, String>((ref, questionId) {
+      return ref.watch(githubRepositoryProvider).fetchQuestionDiff(questionId);
     });

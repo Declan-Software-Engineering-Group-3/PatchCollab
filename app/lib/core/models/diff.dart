@@ -22,7 +22,10 @@ class DiffFile {
   final String path;
   final List<DiffLine> lines;
 
-  const DiffFile({required this.path, required this.lines});
+  /// Shown under the file name when the diff is missing or cut short.
+  final String? note;
+
+  const DiffFile({required this.path, required this.lines, this.note});
 
   int get additions => lines.where((l) => l.type == DiffLineType.added).length;
   int get deletions =>

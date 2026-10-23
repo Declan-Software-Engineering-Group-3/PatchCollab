@@ -218,3 +218,5 @@ The GitHub functions are callables in the same region:
 The app requests no OAuth scope, so access is public repositories only. The redirect URI registered on the GitHub OAuth App must be `patchcollab://github-callback`.
 
 GitHub errors come back as these codes, with `details.reason` set: `failed-precondition` (`github-not-connected`, `github-token-invalid`, `no-linked-repo`), `resource-exhausted` (`github-rate-limited`, with `resetAt`), `not-found` (`github-not-found`), `permission-denied` (`github-private-repo`, `github-forbidden`), `invalid-argument` (`github-bad-ref`), `deadline-exceeded` (`github-timeout`) and `unavailable`.
+
+Answers pinned to a line of a review request's diff also carry `anchorPath`, `anchorLine` and `anchorNewSide` (false when the line only exists in the old file). They are written by the answer's author.
