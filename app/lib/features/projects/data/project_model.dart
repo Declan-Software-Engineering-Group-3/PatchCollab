@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// matches a document in the projects collection in schema.md.
+// projects collection
 class ProjectModel {
   final String projectId;
   final String ownerId;
@@ -53,10 +53,10 @@ class ProjectModel {
   }
 }
 
-/// matches a document in the members subcollection in schema.md.
+// members subcollection
 class ProjectMember {
   final String userId;
-  final String role; // "owner" or "member", lowercase in firestore
+  final String role; // owner or member
   final Timestamp joinedAt;
 
   ProjectMember({
@@ -75,11 +75,11 @@ class ProjectMember {
   }
 }
 
-/// matches a document in the join requests subcollection in schema.md.
+// join requests subcollection
 class MembershipRequest {
   final String requestId;
   final String userId;
-  final String status; // "pending", "approved", "rejected"
+  final String status; // pending, approved or rejected
   final Timestamp createdAt;
 
   MembershipRequest({
