@@ -8,9 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import 'edit_profile_screen.dart';
+import 'my_projects_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.onAlertsTap});
+
+  final VoidCallback? onAlertsTap;
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
@@ -76,22 +79,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         backgroundColor: const Color(0xFF061C1C),
         foregroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: const Icon(Icons.arrow_back, size: 32),
-          tooltip: 'Back',
-        ),
+        automaticallyImplyLeading: false,
+        titleSpacing: 20,
         title: const Text(
           'My Profile',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: widget.onAlertsTap,
             icon: const Icon(Icons.notifications_none, size: 33),
-            tooltip: 'Notifications',
+            tooltip: 'Alerts',
           ),
         ],
       ),
@@ -254,7 +252,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   icon: Icons.folder_outlined,
                   title: 'My Projects',
                   subtitle: 'View your projects and portfolio',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const MyProjectsScreen(),
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 14),
