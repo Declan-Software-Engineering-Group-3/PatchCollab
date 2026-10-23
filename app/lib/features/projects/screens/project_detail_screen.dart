@@ -2,16 +2,105 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../community/community_theme.dart';
+import '../../social/screens/chat_screen.dart';
 import '../providers/projects_provider.dart';
 import 'pending_requests_screen.dart';
+
+// github.com/owner/repo, https and www optional
+final _githubPattern = RegExp(
+  r'^(?:https?://)?(?:www\.)?github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/?$',
+);
+
+// null url means clear the link
+class _GithubEdit {
+  final String? url;
+  const _GithubEdit(this.url);
+}
+
+// link dialog, owns its controller
+class _GithubDialog extends StatefulWidget {
+  final String? current;
+
+  const _GithubDialog({required this.current});
+
+  @override
+  State<_GithubDialog> createState() => _GithubDialogState();
+}
+
+class _GithubDialogState extends State<_GithubDialog> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.current ?? '');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final text = _controller.text.trim();
+
+    // empty clears the link
+    if (text.isEmpty) {
+      Navigator.of(context).pop(const _GithubEdit(null));
+      return;
+    }
+    if (!_githubPattern.hasMatch(text)) {
+      setState(() {
+        _errorText = 'Use a link like github.com/owner/repository';
+      });
+      return;
+    }
+
+    final withScheme = text.startsWith('http') ? text : 'https://$text';
+    Navigator.of(context).pop(
+      _GithubEdit(withScheme.replaceAll(RegExp(r'/+$'), '')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: communityTheme,
+      child: AlertDialog(
+        title: const Text('GitHub repository'),
+        content: TextField(
+          controller: _controller,
+          keyboardType: TextInputType.url,
+          decoration: InputDecoration(
+            hintText: 'github.com/owner/repository',
+            errorText: _errorText,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: _save,
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projectId;
 
   const ProjectDetailScreen({super.key, required this.projectId});
 
-  /// opens the repository in the browser or the github app. a link saved
-  /// without a scheme (github.com/...) gets https added first.
+  // opens the repo, adds https if missing
   Future<void> _openGithub(BuildContext context, String url) async {
     final fixed = url.startsWith('http') ? url : 'https://$url';
     final opened = await launchUrl(
@@ -25,13 +114,101 @@ class ProjectDetailScreen extends ConsumerWidget {
     }
   }
 
+  // asks for the link and saves it
+  Future<void> _editGithub(
+    BuildContext context,
+    WidgetRef ref,
+    String? current,
+  ) async {
+    final result = await showDialog<_GithubEdit>(
+      context: context,
+      builder: (_) => _GithubDialog(current: current),
+    );
+    if (result == null) return;
+
+    await ref.read(projectEditProvider.notifier).updateGithubUrl(
+          projectId: projectId,
+          githubUrl: result.url,
+        );
+    final state = ref.read(projectEditProvider);
+    if (!context.mounted) return;
+    state.whenOrNull(
+      error: (err, stack) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save the link: $err')),
+      ),
+    );
+  }
+
+  // opens a chat with the owner
+  Future<void> _messageOwner(
+    BuildContext context,
+    WidgetRef ref,
+    String ownerId,
+  ) async {
+    final name = await ref.read(userDisplayNameProvider(ownerId).future);
+    if (!context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Theme(
+          data: communityTheme,
+          child: ChatScreen(otherUserId: ownerId, otherUserName: name),
+        ),
+      ),
+    );
+  }
+
+  // asks first, then removes the member
+  Future<void> _confirmRemove(
+    BuildContext context,
+    WidgetRef ref,
+    String userId,
+    String name,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Theme(
+        data: communityTheme,
+        child: AlertDialog(
+        title: const Text('Remove member'),
+        content: Text('Remove $name from this project?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+      ),
+    );
+    if (confirmed != true) return;
+
+    await ref.read(memberRemovalProvider.notifier).removeMember(
+          projectId: projectId,
+          userId: userId,
+        );
+    final state = ref.read(memberRemovalProvider);
+    if (!context.mounted) return;
+    state.whenOrNull(
+      error: (err, stack) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not remove the member: $err')),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectAsync = ref.watch(projectDetailProvider(projectId));
     final membersAsync = ref.watch(projectMembersProvider(projectId));
-    final theme = Theme.of(context);
+    // use the community theme, this context is above it
+    final theme = communityTheme;
 
-    return Scaffold(
+    return Theme(
+      data: communityTheme,
+      child: Scaffold(
       appBar: AppBar(title: const Text('Project Details')),
       body: projectAsync.when(
         data: (project) {
@@ -74,11 +251,30 @@ class ProjectDetailScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     ...members.map(
-                      (m) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(m.userId),
-                        subtitle: Text(m.role),
+                      (m) => Consumer(
+                        builder: (context, ref, _) {
+                          final nameAsync = ref.watch(userDisplayNameProvider(m.userId));
+                          final name = nameAsync.when(
+                            data: (value) => value,
+                            loading: () => '...',
+                            error: (_, _) => 'Unknown student',
+                          );
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const CircleAvatar(child: Icon(Icons.person)),
+                            title: Text(name),
+                            subtitle: Text(m.role),
+                            // owner only, never the owner row
+                            trailing: (isOwner && m.role != 'owner')
+                                ? IconButton(
+                                    tooltip: 'Remove from project',
+                                    icon: const Icon(Icons.person_remove_outlined),
+                                    onPressed: () =>
+                                        _confirmRemove(context, ref, m.userId, name),
+                                  )
+                                : null,
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -87,17 +283,38 @@ class ProjectDetailScreen extends ConsumerWidget {
                 error: (err, stack) => Text('Could not load team: $err'),
               ),
 
-              if (project.githubUrl != null) ...[
+              if (project.githubUrl != null || isOwner) ...[
                 const SizedBox(height: 16),
                 Text('GitHub', style: theme.textTheme.titleSmall),
                 const SizedBox(height: 8),
                 Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.link),
-                    title: Text(project.githubUrl!),
-                    trailing: FilledButton.tonal(
-                      onPressed: () => _openGithub(context, project.githubUrl!),
-                      child: const Text('Open GitHub'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(project.githubUrl ?? 'No repository linked yet'),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (project.githubUrl != null)
+                              FilledButton.tonal(
+                                onPressed: () => _openGithub(context, project.githubUrl!),
+                                child: const Text('Open GitHub'),
+                              ),
+                            if (isOwner)
+                              OutlinedButton(
+                                onPressed: () =>
+                                    _editGithub(context, ref, project.githubUrl),
+                                child: Text(
+                                  project.githubUrl == null ? 'Add link' : 'Edit link',
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -161,8 +378,7 @@ class ProjectDetailScreen extends ConsumerWidget {
               if (!isOwner) ...[
                 const SizedBox(height: 8),
                 OutlinedButton(
-                  // plugs into the messaging feature once it exists.
-                  onPressed: () {},
+                  onPressed: () => _messageOwner(context, ref, project.ownerId),
                   child: const Text('Message Owner'),
                 ),
               ],
@@ -171,6 +387,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Could not load project: $err')),
+      ),
       ),
     );
   }

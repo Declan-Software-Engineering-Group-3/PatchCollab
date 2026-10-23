@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../community/community_theme.dart';
 import '../data/project_options.dart';
 import '../providers/projects_provider.dart';
 import '../widgets/project_card.dart';
 import 'create_project_screen.dart';
+import 'owner_requests_screen.dart';
+import 'pending_requests_screen.dart';
 import 'project_detail_screen.dart';
 
 class BrowseProjectsScreen extends ConsumerWidget {
@@ -14,11 +17,33 @@ class BrowseProjectsScreen extends ConsumerWidget {
     final filteredAsync = ref.watch(filteredProjectsProvider);
     final filters = ref.watch(projectFiltersProvider);
     final notifier = ref.read(projectFiltersProvider.notifier);
+    final ownsProjects = ref.watch(ownedProjectsProvider).isNotEmpty;
+    final pendingCount = ref.watch(pendingRequestCountProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Projects')),
-      // a self-contained way into the create form from this feature. the
-      // app shell's own create button can push the same screen later.
+    return Theme(
+      data: communityTheme,
+      child: Scaffold(
+      appBar: AppBar(
+        title: const Text('Projects'),
+        actions: [
+          // only owners have requests
+          if (ownsProjects)
+            IconButton(
+              tooltip: 'Join requests',
+              icon: Badge(
+                isLabelVisible: pendingCount > 0,
+                label: Text('$pendingCount'),
+                child: const Icon(Icons.inbox_outlined),
+              ),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OwnerRequestsScreen()),
+                );
+              },
+            ),
+        ],
+      ),
+      // create button, the nav bar has none
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.of(context).push(
@@ -68,11 +93,20 @@ class BrowseProjectsScreen extends ConsumerWidget {
                 return ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: projects.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final project = projects[index];
                     return ProjectCard(
                       project: project,
+                      onOpenRequests: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => PendingRequestsScreen(
+                              projectId: project.projectId,
+                            ),
+                          ),
+                        );
+                      },
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -92,12 +126,12 @@ class BrowseProjectsScreen extends ConsumerWidget {
           ),
         ],
       ),
+      ),
     );
   }
 }
 
-/// one row of filter chips for a single field, with an "all" chip that
-/// clears that filter.
+// one row of filter chips
 class _FilterRow extends StatelessWidget {
   final String label;
   final List<String> options;
