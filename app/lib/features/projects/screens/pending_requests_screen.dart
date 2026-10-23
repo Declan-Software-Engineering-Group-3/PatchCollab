@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../community/community_theme.dart';
 import '../data/project_model.dart';
 import '../providers/projects_provider.dart';
 
-/// lets a project owner approve or reject join requests. only reachable from
-/// the detail screen when the signed in user is the owner, and the cloud
-/// function checks ownership again on the server regardless.
+// owner approves or rejects requests
 class PendingRequestsScreen extends ConsumerWidget {
   final String projectId;
 
@@ -16,7 +15,7 @@ class PendingRequestsScreen extends ConsumerWidget {
     final requestsAsync = ref.watch(pendingRequestsProvider(projectId));
     final responseState = ref.watch(joinRequestResponseProvider);
 
-    // show a message if approving or rejecting fails on the server.
+    // show errors from approve or reject
     ref.listen(joinRequestResponseProvider, (previous, next) {
       next.whenOrNull(
         error: (err, stack) => ScaffoldMessenger.of(context).showSnackBar(
@@ -25,7 +24,9 @@ class PendingRequestsScreen extends ConsumerWidget {
       );
     });
 
-    return Scaffold(
+    return Theme(
+      data: communityTheme,
+      child: Scaffold(
       appBar: AppBar(title: const Text('Join Requests')),
       body: requestsAsync.when(
         data: (requests) {
@@ -35,8 +36,8 @@ class PendingRequestsScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: requests.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) => _RequestCard(
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (context, index) => JoinRequestCard(
               projectId: projectId,
               request: requests[index],
               busy: responseState.isLoading,
@@ -46,16 +47,19 @@ class PendingRequestsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Could not load requests: $err')),
       ),
+      ),
     );
   }
 }
 
-class _RequestCard extends ConsumerWidget {
+// one request with approve and reject
+class JoinRequestCard extends ConsumerWidget {
   final String projectId;
   final MembershipRequest request;
   final bool busy;
 
-  const _RequestCard({
+  const JoinRequestCard({
+    super.key,
     required this.projectId,
     required this.request,
     required this.busy,
@@ -77,7 +81,7 @@ class _RequestCard extends ConsumerWidget {
               nameAsync.when(
                 data: (name) => name,
                 loading: () => 'Loading...',
-                error: (_, __) => 'Unknown student',
+                error: (_, _) => 'Unknown student',
               ),
               style: theme.textTheme.titleMedium,
             ),
@@ -86,30 +90,40 @@ class _RequestCard extends ConsumerWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: FilledButton(
-                    onPressed: busy
-                        ? null
-                        : () => notifier.respond(
-                              projectId: projectId,
-                              requestId: request.requestId,
-                              approve: true,
-                            ),
-                    child: const Text('Approve'),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
+                  onPressed: busy
+                      ? null
+                      : () => notifier.respond(
+                            projectId: projectId,
+                            requestId: request.requestId,
+                            approve: true,
+                          ),
+                  child: const Text('Approve'),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: busy
-                        ? null
-                        : () => notifier.respond(
-                              projectId: projectId,
-                              requestId: request.requestId,
-                              approve: false,
-                            ),
-                    child: const Text('Reject'),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
+                  onPressed: busy
+                      ? null
+                      : () => notifier.respond(
+                            projectId: projectId,
+                            requestId: request.requestId,
+                            approve: false,
+                          ),
+                  child: const Text('Reject'),
                 ),
               ],
             ),

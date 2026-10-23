@@ -4,10 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/project_model.dart';
 
-/// all projects, newest first. filtering (technology/difficulty/category)
-/// happens in the browse screen by watching this and narrowing the list,
-/// so there is one source of truth for "all projects" rather than one
-/// provider per filter combination.
+// all projects, newest first
 final projectsProvider = StreamProvider<List<ProjectModel>>((ref) {
   return FirebaseFirestore.instance
       .collection('projects')
@@ -16,7 +13,7 @@ final projectsProvider = StreamProvider<List<ProjectModel>>((ref) {
       .map((snap) => snap.docs.map(ProjectModel.fromDoc).toList());
 });
 
-/// a single project by id, for the detail screen.
+// one project for the detail page
 final projectDetailProvider =
     StreamProvider.family<ProjectModel?, String>((ref, projectId) {
   return FirebaseFirestore.instance
@@ -26,7 +23,7 @@ final projectDetailProvider =
       .map((doc) => doc.exists ? ProjectModel.fromDoc(doc) : null);
 });
 
-/// members of one project.
+// members of a project
 final projectMembersProvider =
     StreamProvider.family<List<ProjectMember>, String>((ref, projectId) {
   return FirebaseFirestore.instance
@@ -37,9 +34,7 @@ final projectMembersProvider =
       .map((snap) => snap.docs.map(ProjectMember.fromDoc).toList());
 });
 
-/// pending membership requests for one project, for the owner's review screen.
-/// sorted in dart rather than in the query, because filtering on status and
-/// ordering by time together would need a composite index.
+// pending requests for a project
 final pendingRequestsProvider =
     StreamProvider.family<List<MembershipRequest>, String>((ref, projectId) {
   return FirebaseFirestore.instance
@@ -55,8 +50,7 @@ final pendingRequestsProvider =
   });
 });
 
-/// display name for a user id, read from the users collection. used so the
-/// owner sees a name on a join request instead of a raw uid.
+// name of a user, shown on requests
 final userDisplayNameProvider =
     StreamProvider.family<String, String>((ref, userId) {
   return FirebaseFirestore.instance
@@ -66,7 +60,7 @@ final userDisplayNameProvider =
       .map((doc) => (doc.data()?['displayName'] as String?) ?? 'Unknown student');
 });
 
-/// the three filter values the browse screen offers. null means "all".
+// selected filters, null means all
 class ProjectFilters {
   final String? technology;
   final String? difficulty;
@@ -90,8 +84,7 @@ class ProjectFilters {
   }
 }
 
-/// holds the browse screen's selected filters. logic for this feature lives
-/// here, not in the screen widget, per the team's riverpod convention.
+// keeps the selected filters
 class ProjectFiltersNotifier extends Notifier<ProjectFilters> {
   @override
   ProjectFilters build() => const ProjectFilters();
@@ -116,9 +109,7 @@ final projectFiltersProvider =
   ProjectFiltersNotifier.new,
 );
 
-/// the full project list narrowed by the current filters. a plain provider,
-/// not a stream provider, since it derives from the projects stream rather than
-/// talking to firestore directly.
+// projects after the filters are applied
 final filteredProjectsProvider = Provider<AsyncValue<List<ProjectModel>>>((ref) {
   final projectsAsync = ref.watch(projectsProvider);
   final filters = ref.watch(projectFiltersProvider);
@@ -139,8 +130,7 @@ final filteredProjectsProvider = Provider<AsyncValue<List<ProjectModel>>>((ref) 
   });
 });
 
-/// handles submitting the create-project form. state is the async status of
-/// the last attempt, so the screen can show a spinner or an error.
+// saves a new project
 class ProjectCreationNotifier extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
@@ -169,8 +159,7 @@ class ProjectCreationNotifier extends Notifier<AsyncValue<void>> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // the owner's own member row is written here directly. every other
-      // member row is written by the approval cloud function, per schema.md.
+      // owner gets their own member row here
       await docRef.collection('members').doc(uid).set({
         'userId': uid,
         'role': 'owner',
@@ -185,9 +174,7 @@ final projectCreationProvider =
   ProjectCreationNotifier.new,
 );
 
-/// handles submitting a request to join a project. separate from
-/// the create notifier since they're different user actions with
-/// different state to track.
+// sends a join request
 class JoinRequestNotifier extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
@@ -214,14 +201,29 @@ final joinRequestProvider =
   JoinRequestNotifier.new,
 );
 
-/// the current user's request status for this project, so the detail screen
-/// can show the right button. returns approved, pending, rejected or null when
-/// the user never asked. filters on the user id only, so no composite index is
-/// needed, and picks the most relevant status in dart.
+// true if the user is in the members list
+final myMemberRowProvider =
+    StreamProvider.family<bool, String>((ref, projectId) {
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return Stream.value(false);
+
+  return FirebaseFirestore.instance
+      .collection('projects')
+      .doc(projectId)
+      .collection('members')
+      .doc(uid)
+      .snapshots()
+      .map((doc) => doc.exists);
+});
+
+// join status for the current user
 final myMembershipStatusProvider =
     StreamProvider.family<String?, String>((ref, projectId) {
   final uid = FirebaseAuth.instance.currentUser?.uid;
   if (uid == null) return Stream.value(null);
+
+  final isMember = ref.watch(myMemberRowProvider(projectId)).value ?? false;
+  if (isMember) return Stream.value('approved');
 
   return FirebaseFirestore.instance
       .collection('projects')
@@ -231,16 +233,13 @@ final myMembershipStatusProvider =
       .snapshots()
       .map((snap) {
     final statuses = snap.docs.map((d) => d['status'] as String).toSet();
-    if (statuses.contains('approved')) return 'approved';
     if (statuses.contains('pending')) return 'pending';
     if (statuses.contains('rejected')) return 'rejected';
     return null;
   });
 });
 
-/// handles the owner approving or rejecting a join request. this never writes
-/// to firestore directly: approving must be validated on the server, and the
-/// status field is only ever changed by the cloud function, per schema.md.
+// owner approves or rejects through the cloud function
 class JoinRequestResponseNotifier extends Notifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
@@ -252,7 +251,7 @@ class JoinRequestResponseNotifier extends Notifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      // the region must match the one the function is deployed in.
+      // same region as the function
       final callable = FirebaseFunctions.instanceFor(region: 'africa-south1')
           .httpsCallable('respondToJoinRequest');
       await callable.call({
@@ -268,3 +267,69 @@ final joinRequestResponseProvider =
     NotifierProvider<JoinRequestResponseNotifier, AsyncValue<void>>(
   JoinRequestResponseNotifier.new,
 );
+
+// removes a member, owner only (see rules)
+class MemberRemovalNotifier extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncValue.data(null);
+
+  Future<void> removeMember({
+    required String projectId,
+    required String userId,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .collection('members')
+          .doc(userId)
+          .delete();
+    });
+  }
+}
+
+final memberRemovalProvider =
+    NotifierProvider<MemberRemovalNotifier, AsyncValue<void>>(
+  MemberRemovalNotifier.new,
+);
+
+// saves or clears the github link
+class ProjectEditNotifier extends Notifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncValue.data(null);
+
+  Future<void> updateGithubUrl({
+    required String projectId,
+    required String? githubUrl,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await FirebaseFirestore.instance
+          .collection('projects')
+          .doc(projectId)
+          .update({'githubUrl': githubUrl});
+    });
+  }
+}
+
+final projectEditProvider =
+    NotifierProvider<ProjectEditNotifier, AsyncValue<void>>(
+  ProjectEditNotifier.new,
+);
+
+// projects owned by the current user
+final ownedProjectsProvider = Provider<List<ProjectModel>>((ref) {
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final projects = ref.watch(projectsProvider).value ?? const <ProjectModel>[];
+  return projects.where((p) => p.ownerId == uid).toList();
+});
+
+// waiting requests across my projects
+final pendingRequestCountProvider = Provider<int>((ref) {
+  var total = 0;
+  for (final project in ref.watch(ownedProjectsProvider)) {
+    total += ref.watch(pendingRequestsProvider(project.projectId)).value?.length ?? 0;
+  }
+  return total;
+});
