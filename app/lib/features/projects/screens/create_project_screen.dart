@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../community/community_theme.dart';
 import '../data/project_options.dart';
 import '../providers/projects_provider.dart';
 
@@ -65,7 +66,9 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
     final creationState = ref.watch(projectCreationProvider);
     final isSubmitting = creationState.isLoading;
 
-    return Scaffold(
+    return Theme(
+      data: communityTheme,
+      child: Scaffold(
       appBar: AppBar(title: const Text('Create a Project')),
       body: Form(
         key: _formKey,
@@ -74,19 +77,26 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
           children: [
             TextFormField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Project Name'),
+              decoration: const InputDecoration(
+                labelText: 'Project Name',
+                border: OutlineInputBorder(),
+              ),
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                alignLabelWithHint: true,
+                border: OutlineInputBorder(),
+              ),
               maxLines: 3,
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 16),
 
-            Text('Technology', style: Theme.of(context).textTheme.labelMedium),
+            Text('Technology', style: communityTheme.textTheme.labelMedium),
             const SizedBox(height: 8),
             _OptionChips(
               options: projectTechnologies,
@@ -95,7 +105,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
             ),
             const SizedBox(height: 16),
 
-            Text('Difficulty', style: Theme.of(context).textTheme.labelMedium),
+            Text('Difficulty', style: communityTheme.textTheme.labelMedium),
             const SizedBox(height: 8),
             _OptionChips(
               options: projectDifficulties,
@@ -104,7 +114,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
             ),
             const SizedBox(height: 16),
 
-            Text('Category', style: Theme.of(context).textTheme.labelMedium),
+            Text('Category', style: communityTheme.textTheme.labelMedium),
             const SizedBox(height: 8),
             _OptionChips(
               options: projectCategories,
@@ -117,6 +127,8 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
               controller: _githubController,
               decoration: const InputDecoration(
                 labelText: 'GitHub Repository (optional)',
+                hintText: 'github.com/owner/repository',
+                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -134,13 +146,12 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 }
 
-/// single-select chip row used for technology/difficulty/category. no "all"
-/// option here, unlike the browse filters, since a project needs exactly one
-/// value for each field.
+// pick one option
 class _OptionChips extends StatelessWidget {
   final List<String> options;
   final String? selected;
