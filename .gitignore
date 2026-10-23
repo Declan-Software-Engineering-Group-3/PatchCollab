@@ -11,3 +11,6 @@ app/android/app/google-services.json
 .env
 *.keystore
 .idea/
+
+# Local emulator secrets (Gemini key)
+functions/.secret.local

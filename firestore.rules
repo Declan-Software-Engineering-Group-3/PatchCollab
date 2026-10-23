@@ -35,12 +35,35 @@ service cloud.firestore {
       return /databases/$(database)/documents/conversations/$(conversationId);
     }
 
+    // linkedRepo: null or { owner, name, defaultBranch, linkedAt }
+    function validLinkedRepo(repo) {
+      return repo == null || (repo is map
+        && repo.keys().hasOnly(['owner', 'name', 'defaultBranch', 'linkedAt'])
+        && repo.keys().hasAll(['owner', 'name', 'defaultBranch', 'linkedAt'])
+        && repo.owner is string && repo.owner.size() > 0
+        && repo.name is string && repo.name.size() > 0
+        && repo.defaultBranch is string
+        && repo.linkedAt is timestamp);
+    }
+
+    // diffRef: null or a commit / compare / pull reference
+    function validDiffRef(ref) {
+      return ref == null || (ref is map
+        && ref.keys().hasOnly(['kind', 'sha', 'base', 'head', 'number'])
+        && ref.kind in ['commit', 'compare', 'pull']
+        && (ref.kind != 'commit' || ref.sha is string)
+        && (ref.kind != 'compare' || (ref.base is string && ref.head is string))
+        && (ref.kind != 'pull' || ref.number is int));
+    }
+
     // ---------- users ----------
 
     match /users/{userId} {
       allow read: if signedIn();
-      allow create: if isSelf(userId);
-      allow update: if isSelf(userId);
+      // githubUsername is set by the GitHub connect function only
+      allow create: if isSelf(userId)
+        && request.resource.data.get('githubUsername', null) == null;
+      allow update: if isSelf(userId) && !changes(['githubUsername']);
       allow delete: if false;
     }
 
@@ -48,8 +71,10 @@ service cloud.firestore {
 
     match /projects/{projectId} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isProjectOwner(projectId) && !changes(['ownerId']);
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid
+        && validLinkedRepo(request.resource.data.get('linkedRepo', null));
+      allow update: if isProjectOwner(projectId) && !changes(['ownerId'])
+        && validLinkedRepo(request.resource.data.get('linkedRepo', null));
       allow delete: if isProjectOwner(projectId);
 
       match /members/{memberId} {
@@ -82,10 +107,14 @@ service cloud.firestore {
         && request.resource.data.type in ['question', 'reviewRequest']
         && request.resource.data.voteCount == 0
         && request.resource.data.createdAt == request.time
-        && !('acceptedAnswerId' in request.resource.data && request.resource.data.acceptedAnswerId != null);
+        && !('acceptedAnswerId' in request.resource.data && request.resource.data.acceptedAnswerId != null)
+        && validLinkedRepo(request.resource.data.get('linkedRepo', null))
+        && validDiffRef(request.resource.data.get('diffRef', null));
       allow update: if signedIn()
         && resource.data.userId == request.auth.uid
-        && !changes(['userId', 'type', 'voteCount', 'acceptedAnswerId', 'createdAt']);
+        && !changes(['userId', 'type', 'voteCount', 'acceptedAnswerId', 'createdAt'])
+        && validLinkedRepo(request.resource.data.get('linkedRepo', null))
+        && validDiffRef(request.resource.data.get('diffRef', null));
       allow delete: if signedIn() && resource.data.userId == request.auth.uid;
 
       // One document per voter, id equals the voter's uid. voteCount is
@@ -190,6 +219,13 @@ service cloud.firestore {
     match /aiRequests/{requestId} {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
       allow write: if false;
+    }
+
+    // ---------- GitHub tokens ----------
+    // Cloud Functions only
+
+    match /githubTokens/{userId} {
+      allow read, write: if false;
     }
   }
 }
