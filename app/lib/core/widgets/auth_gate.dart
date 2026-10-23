@@ -5,8 +5,6 @@ import '../../features/auth/screens/splash_screen.dart';
 import 'main_shell.dart';
 import '../providers/auth_state_provider.dart';
 
-// signed in users go to the main shell, everyone else starts at the splash screen.
-// anonymous users count as signed out (the dev sign in in community is anonymous)
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
 
@@ -15,7 +13,6 @@ class AuthGate extends ConsumerWidget {
     ref.listen(authStateProvider, (previous, next) {
       final user = next.value;
       if (user != null && !user.isAnonymous) {
-        // close the login / register screen that was pushed on top
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     });
