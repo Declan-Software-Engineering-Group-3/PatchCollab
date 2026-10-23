@@ -25,14 +25,23 @@ class GithubRepo {
     );
   }
 
-  /// Linked repository fields as stored on a project or question.
-  Map<String, dynamic> toLinkFields() => {
-    'githubUrl': url,
-    'githubOwner': owner,
-    'githubRepo': name,
-    'githubDefaultBranch': defaultBranch,
-    'githubLinkedAt': FieldValue.serverTimestamp(),
+  /// The `linkedRepo` map stored on a project or question. The rules accept
+  /// exactly these four keys.
+  Map<String, dynamic> toLinkedRepo() => {
+    'owner': owner,
+    'name': name,
+    'defaultBranch': defaultBranch,
+    'linkedAt': FieldValue.serverTimestamp(),
   };
+
+  static GithubRepo? fromLinkedRepo(Object? data) {
+    if (data is! Map) return null;
+    return GithubRepo(
+      owner: data['owner'] as String,
+      name: data['name'] as String,
+      defaultBranch: data['defaultBranch'] as String? ?? 'main',
+    );
+  }
 }
 
 /// What the picker hands back: a chosen repository, or null to unlink.

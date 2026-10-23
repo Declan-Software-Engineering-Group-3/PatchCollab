@@ -5,3 +5,4 @@ export * from "./projects";
 export * from "./community";
 export * from "./social";
 export * from "./ai";
+export * from "./github";
