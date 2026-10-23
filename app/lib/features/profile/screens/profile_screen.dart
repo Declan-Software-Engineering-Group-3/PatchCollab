@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import 'edit_profile_screen.dart';
+import 'my_projects_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -254,7 +255,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   icon: Icons.folder_outlined,
                   title: 'My Projects',
                   subtitle: 'View your projects and portfolio',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const MyProjectsScreen(),
+                      ),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 14),
