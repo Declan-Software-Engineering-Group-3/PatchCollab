@@ -15,6 +15,7 @@ The document id is the Firebase Auth uid. Written by the owner (Mateus).
 | email | string | |
 | profileImageUrl | string, nullable | Firebase Storage URL |
 | fcmTokens | array of string | One token per device. Append on login, never overwrite. Stale tokens are removed by the send helper when FCM reports them unregistered |
+| githubUsername | string, nullable | GitHub login once the student connects GitHub. Cloud Function only; the app reads it to show "Connected as ..." |
 | createdAt | timestamp | |
 
 ## projects/{projectId}
@@ -29,6 +30,7 @@ The document id is the Firebase Auth uid. Written by the owner (Mateus).
 | difficulty | string | Filter field |
 | category | string | Filter field |
 | githubUrl | string, nullable | |
+| linkedRepo | map, nullable | Repository chosen in the picker. See "Linked repository" below |
 | createdAt | timestamp | |
 
 ### projects/{projectId}/members/{userId}
@@ -65,6 +67,8 @@ Community questions and code review requests share one collection.
 | category | string | |
 | type | string | `question` or `reviewRequest` |
 | githubUrl | string, nullable | Repository link for larger codebases |
+| linkedRepo | map, nullable | Repository chosen in the picker. See "Linked repository" below |
+| diffRef | map, nullable | The commit, comparison or pull request attached to a review request. See "Diff reference" below |
 | voteCount | number | Starts at 0. Cloud Function only |
 | acceptedAnswerId | string, nullable | Cloud Function only |
 | createdAt | timestamp | |
@@ -156,10 +160,58 @@ Written only by the PatchCollab AI function. The per-student daily cap is counte
 | type | string | review, summarise or explain |
 | createdAt | timestamp | |
 
+## Linked repository (map on projects and questions)
+
+Written by the app when the owner or author picks a repository (tasks 57, 59 and 60). The rules reject any other shape. GitHub content is always fetched with the token of the person who linked the repository, never the viewer's.
+
+| Field | Type | Notes |
+|---|---|---|
+| owner | string | GitHub user or organisation, e.g. `octocat` |
+| name | string | Repository name, e.g. `hello-world` |
+| defaultBranch | string | From the picker, e.g. `main` |
+| linkedAt | timestamp | `FieldValue.serverTimestamp()` |
+
+## Diff reference (map on questions)
+
+One of these three shapes. The rules reject anything else.
+
+| kind | Other fields |
+|---|---|
+| `commit` | `sha` (string) |
+| `compare` | `base` and `head` (strings, branch, tag or commit) |
+| `pull` | `number` (integer) |
+
+## githubTokens/{userId}
+
+The document id is the Firebase Auth uid. Written and read only by the GitHub Cloud Functions; the rules deny every client read and write, including the owner's.
+
+| Field | Type | Notes |
+|---|---|---|
+| userId | string | |
+| accessToken | string | GitHub OAuth token. Never sent to the client |
+| scope | string | Scopes GitHub granted |
+| githubUserId | number | |
+| githubUsername | string | |
+| connectedAt | timestamp | |
+
+Until the supervisor confirms the ethics position (Build Task List 8.2), the functions only read public repositories, even if a token has wider access.
+
 ## Composite indexes
 
-Declared in `firestore.indexes.json`: answers (`questionId` + `createdAt`, both directions), notifications (`userId` + `createdAt`), questions (`category`, `language` and `type`, each + `createdAt`), aiRequests (`userId` + `createdAt`, both directions), conversations (`participants` + `lastMessageAt`). If a new query throws an index error, click the link in the error, create the index, then add it to `firestore.indexes.json` and commit it.
+Declared in `firestore.indexes.json`: answers (`questionId` + `createdAt`, both directions), notifications (`userId` + `createdAt`), questions (`category`, `language` and `type`, each + `createdAt`; `acceptedAnswerId` + `createdAt`; `language` + `acceptedAnswerId` + `createdAt`), aiRequests (`userId` + `createdAt`, both directions), conversations (`participants` + `lastMessageAt`). If a new query throws an index error, click the link in the error, create the index, then add it to `firestore.indexes.json` and commit it.
 
 ## Cloud Functions calls
 
 The AI function is a callable in region `africa-south1`, so the client must use `FirebaseFunctions.instanceFor(region: 'africa-south1')`. It takes `prompt` (string) and `type` (review, summarise or explain) and returns `requestId`, `response` and `remaining`. It fails with `resource-exhausted` when the student has used their 20 requests for the day.
+
+The GitHub functions are callables in the same region:
+
+| Function | Input | Returns |
+|---|---|---|
+| `exchangeGitHubCode` | `code` from the GitHub consent screen, optional `redirectUri` | `githubUsername` |
+| `listGitHubRepos` | optional `page` (50 per page) | `repos` (owner, name, fullName, defaultBranch, private, description, language, updatedAt), `page`, `hasMore` |
+| `getGitHubTree` | `target` (`project` or `question`), `id`, optional `ref` | `entries` (path, type `file` or `dir`, size), `truncated` |
+| `getGitHubFile` | `target`, `id`, `path`, optional `ref` | `content` (null when `binary` or `tooLarge`), `truncated` |
+| `getGitHubDiff` | `target`, `id`, plus a diff reference (or nothing, to use the question's own `diffRef`) | `title`, `files` (filename, status, additions, deletions, patch, patchTruncated, patchUnavailable), `moreFilesOnGitHub` |
+
+GitHub errors come back as these codes, with `details.reason` set: `failed-precondition` (`github-not-connected`, `github-token-invalid`, `no-linked-repo`), `resource-exhausted` (`github-rate-limited`, with `resetAt`), `not-found` (`github-not-found`), `permission-denied` (`github-private-repo`, `github-forbidden`), `invalid-argument` (`github-bad-ref`), `deadline-exceeded` (`github-timeout`) and `unavailable`.
