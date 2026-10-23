@@ -41,6 +41,8 @@ dependencies:
   firebase_messaging: ^16.7.0
   cloud_functions: ^6.5.0
   flutter_riverpod: ^3.4.3
+  image_picker: ^1.2.4
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +65,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/images/patchcollab_logo.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
