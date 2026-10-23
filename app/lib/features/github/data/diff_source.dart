@@ -17,12 +17,33 @@ class DiffSource {
     DiffKind.pull => 'Pull request #$value',
   };
 
-  Map<String, dynamic> toMap() => {'kind': kind.name, 'value': value};
+  /// The `diffRef` map stored on a question. The rules accept exactly these
+  /// shapes: {kind, sha}, {kind, base, head} or {kind, number}.
+  Map<String, dynamic> toDiffRef() {
+    final text = value.trim();
+    switch (kind) {
+      case DiffKind.commit:
+        return {'kind': 'commit', 'sha': text};
+      case DiffKind.compare:
+        final parts = text.split('...');
+        return {'kind': 'compare', 'base': parts.first, 'head': parts.last};
+      case DiffKind.pull:
+        return {'kind': 'pull', 'number': int.parse(text)};
+    }
+  }
 
-  static DiffSource? fromFields(String? kind, String? value) {
-    if (kind == null || value == null) return null;
-    for (final k in DiffKind.values) {
-      if (k.name == kind) return DiffSource(k, value);
+  static DiffSource? fromDiffRef(Object? data) {
+    if (data is! Map) return null;
+    switch (data['kind']) {
+      case 'commit':
+        return DiffSource(DiffKind.commit, data['sha'] as String);
+      case 'compare':
+        return DiffSource(
+          DiffKind.compare,
+          '${data['base']}...${data['head']}',
+        );
+      case 'pull':
+        return DiffSource(DiffKind.pull, '${data['number']}');
     }
     return null;
   }

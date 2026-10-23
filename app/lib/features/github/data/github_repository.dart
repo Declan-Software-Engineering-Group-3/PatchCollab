@@ -5,7 +5,6 @@ import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
 import '../../../core/models/diff.dart';
 import '../../../core/utils/diff_parser.dart';
-import 'diff_source.dart';
 import 'github_repo_model.dart';
 
 // Not a secret. Pass with --dart-define=GITHUB_CLIENT_ID=... when running.
@@ -89,21 +88,28 @@ class GithubRepository {
     return repos;
   }
 
-  Future<List<DiffFile>> fetchDiff({
-    required String owner,
-    required String repo,
-    required DiffSource source,
-  }) async {
-    final data = await _call('getGithubDiff', {
-      'owner': owner,
-      'repo': repo,
-      'kind': source.kind.name,
-      'value': source.value,
+  /// The diff attached to a question. The function reads the question's own
+  /// `diffRef`, using the author's token, so viewers don't need GitHub.
+  Future<List<DiffFile>> fetchQuestionDiff(String questionId) async {
+    final data = await _call('getGitHubDiff', {
+      'target': 'question',
+      'id': questionId,
     });
     return (data['files'] as List).map((f) {
       final file = Map<String, dynamic>.from(f as Map);
-      // GitHub leaves patch out for binary or very large files
-      return parsePatch(file['path'] as String, file['patch'] as String? ?? '');
+      final diff = parsePatch(
+        file['filename'] as String,
+        file['patch'] as String? ?? '',
+      );
+      return DiffFile(
+        path: diff.path,
+        lines: diff.lines,
+        note: file['patchUnavailable'] == true
+            ? 'No preview: GitHub did not provide a diff for this file (binary or too large).'
+            : file['patchTruncated'] == true
+            ? 'This file is long, so only the start of the diff is shown.'
+            : null,
+      );
     }).toList();
   }
 

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../github/data/diff_source.dart';
+import '../../github/data/github_repo_model.dart';
 
 class Question {
   final String questionId;
@@ -12,8 +13,7 @@ class Question {
   final String category;
   final String type; // "question" or "reviewRequest"
   final String? githubUrl;
-  final String? githubOwner;
-  final String? githubRepo;
+  final GithubRepo? linkedRepo;
   final DiffSource? diffSource;
   final int voteCount;
   final String? acceptedAnswerId;
@@ -31,8 +31,7 @@ class Question {
     this.codeSnippet,
     this.language,
     this.githubUrl,
-    this.githubOwner,
-    this.githubRepo,
+    this.linkedRepo,
     this.diffSource,
     this.acceptedAnswerId,
   });
@@ -49,12 +48,8 @@ class Question {
       category: data['category'] as String,
       type: data['type'] as String,
       githubUrl: data['githubUrl'] as String?,
-      githubOwner: data['githubOwner'] as String?,
-      githubRepo: data['githubRepo'] as String?,
-      diffSource: DiffSource.fromFields(
-        data['githubDiffKind'] as String?,
-        data['githubDiffValue'] as String?,
-      ),
+      linkedRepo: GithubRepo.fromLinkedRepo(data['linkedRepo']),
+      diffSource: DiffSource.fromDiffRef(data['diffRef']),
       voteCount: (data['voteCount'] as num?)?.toInt() ?? 0,
       acceptedAnswerId: data['acceptedAnswerId'] as String?,
       // null until the server timestamp comes back
@@ -62,8 +57,7 @@ class Question {
     );
   }
 
-  bool get hasDiff =>
-      diffSource != null && githubOwner != null && githubRepo != null;
+  bool get hasDiff => diffSource != null && linkedRepo != null;
 
   bool get isAnswered => acceptedAnswerId != null;
 }
