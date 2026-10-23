@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../ai/screens/ai_screen.dart';
 import '../data/community_options.dart';
 import '../providers/community_providers.dart';
 import '../widgets/question_card.dart';
@@ -22,6 +23,15 @@ class CommunityScreen extends ConsumerWidget {
         appBar: AppBar(
           title: const Text('Community'),
           actions: [
+            IconButton(
+              tooltip: 'PatchCollab AI',
+              icon: const Icon(Icons.auto_awesome),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AiScreen()),
+                );
+              },
+            ),
             IconButton(
               tooltip: 'Sign out',
               icon: const Icon(Icons.logout),
