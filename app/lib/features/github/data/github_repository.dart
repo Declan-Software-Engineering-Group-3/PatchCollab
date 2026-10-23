@@ -18,6 +18,9 @@ const _redirectUri = '$_callbackScheme://github-callback';
 // submission does not cover.
 const _scope = '';
 
+// listGitHubRepos pages are 50 repos each
+const _maxRepoPages = 6;
+
 class GithubNotConnectedException implements Exception {
   const GithubNotConnectedException();
 
@@ -62,16 +65,28 @@ class GithubRepository {
     return code;
   }
 
-  Future<void> connect() async {
+  Future<String> connect() async {
     final code = await authorize();
-    await _call('exchangeGithubCode', {'code': code});
+    final data = await _call('exchangeGitHubCode', {
+      'code': code,
+      'redirectUri': _redirectUri,
+    });
+    return data['githubUsername'] as String;
   }
 
+  /// All of the student's repositories, fetched a page at a time (50 each).
   Future<List<GithubRepo>> listRepos() async {
-    final data = await _call('listGithubRepos', {});
-    return (data['repos'] as List)
-        .map((r) => GithubRepo.fromMap(Map<String, dynamic>.from(r as Map)))
-        .toList();
+    final repos = <GithubRepo>[];
+    for (var page = 1; page <= _maxRepoPages; page++) {
+      final data = await _call('listGitHubRepos', {'page': page});
+      repos.addAll(
+        (data['repos'] as List).map(
+          (r) => GithubRepo.fromMap(Map<String, dynamic>.from(r as Map)),
+        ),
+      );
+      if (data['hasMore'] != true) break;
+    }
+    return repos;
   }
 
   Future<List<DiffFile>> fetchDiff({
@@ -93,7 +108,7 @@ class GithubRepository {
   }
 
   /// Revokes the token and clears the student's stored repository links.
-  Future<void> disconnect() => _call('disconnectGithub', {});
+  Future<void> disconnect() => _call('disconnectGitHub', {});
 
   Future<Map<String, dynamic>> _call(
     String name,
@@ -103,8 +118,16 @@ class GithubRepository {
       final result = await _functions.httpsCallable(name).call(args);
       return Map<String, dynamic>.from((result.data ?? {}) as Map);
     } on FirebaseFunctionsException catch (e) {
-      if (e.code == 'failed-precondition') {
+      final details = e.details;
+      final reason = details is Map ? details['reason'] : null;
+      if (reason == 'github-not-connected' ||
+          reason == 'github-token-invalid') {
         throw const GithubNotConnectedException();
+      }
+      if (reason == 'github-rate-limited') {
+        throw Exception(
+          "GitHub's rate limit was reached. Try again in a few minutes.",
+        );
       }
       throw Exception(e.message ?? 'GitHub request failed (${e.code}).');
     }
