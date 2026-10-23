@@ -1,1 +1,2 @@
-export * from "./membership";
+export { respondToJoinRequest } from "./respondToJoinRequest";
+export { onJoinRequestCreated } from "./notifications";

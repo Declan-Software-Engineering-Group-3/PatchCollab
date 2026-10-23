@@ -191,5 +191,11 @@ service cloud.firestore {
       allow read: if signedIn() && resource.data.userId == request.auth.uid;
       allow write: if false;
     }
+
+    // ---------- My Projects: collection-group membership reads ----------
+    match /{path=**}/members/{memberId} {
+      allow read: if signedIn()
+        && resource.data.userId == request.auth.uid;
+    }
   }
 }

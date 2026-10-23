@@ -1,1 +1,6 @@
-export * from "./notifications";
+export {
+  createAndSendNotification,
+  onFriendRequestCreated,
+  onFriendshipUpdated,
+  onMessageCreated,
+} from "./notifications";
