@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../community/community_theme.dart';
 import '../data/project_model.dart';
 import '../providers/projects_provider.dart';
 import 'pending_requests_screen.dart';
 
-/// every join request waiting on the user's own projects, in one place, so the
-/// owner does not have to open each project to answer them.
+// all waiting requests on my projects
 class OwnerRequestsScreen extends ConsumerWidget {
   const OwnerRequestsScreen({super.key});
 
@@ -17,7 +15,7 @@ class OwnerRequestsScreen extends ConsumerWidget {
     final total = ref.watch(pendingRequestCountProvider);
     final responseState = ref.watch(joinRequestResponseProvider);
 
-    // show a message if approving or rejecting fails on the server.
+    // show errors from approve or reject
     ref.listen(joinRequestResponseProvider, (previous, next) {
       next.whenOrNull(
         error: (err, stack) => ScaffoldMessenger.of(context).showSnackBar(
@@ -47,8 +45,7 @@ class OwnerRequestsScreen extends ConsumerWidget {
   }
 }
 
-/// the waiting requests for one project, under the project's title. draws
-/// nothing when that project has none.
+// requests for one project
 class _ProjectRequests extends ConsumerWidget {
   final ProjectModel project;
   final bool busy;
@@ -57,8 +54,7 @@ class _ProjectRequests extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final requests =
-        ref.watch(pendingRequestsProvider(project.projectId)).value ??
+    final requests = ref.watch(pendingRequestsProvider(project.projectId)).value ??
         const <MembershipRequest>[];
     if (requests.isEmpty) return const SizedBox.shrink();
 
