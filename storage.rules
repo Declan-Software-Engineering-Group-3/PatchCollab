@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// Profile images: profile_images/{uid}.jpg|jpeg|png
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // File name must be the user's uid + allowed extension
+    function isOwnProfileImage(fileName) {
+      return signedIn() && fileName.matches(request.auth.uid + '[.](jpg|jpeg|png)');
+    }
+
+    match /profile_images/{fileName} {
+      allow read: if signedIn();
+
+      // Owner only, jpeg/png, max 5 MB
+      allow create, update: if isOwnProfileImage(fileName)
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png)');
+
+      allow delete: if isOwnProfileImage(fileName);
+    }
+  }
+}
