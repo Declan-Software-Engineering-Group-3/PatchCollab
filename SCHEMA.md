@@ -210,8 +210,11 @@ The GitHub functions are callables in the same region:
 |---|---|---|
 | `exchangeGitHubCode` | `code` from the GitHub consent screen, optional `redirectUri` | `githubUsername` |
 | `listGitHubRepos` | optional `page` (50 per page) | `repos` (owner, name, fullName, defaultBranch, private, description, language, updatedAt), `page`, `hasMore` |
+| `disconnectGitHub` | none | none. Revokes the token at GitHub, deletes `githubTokens/{userId}` and `githubUsername`, and clears `linkedRepo` (and `diffRef` on questions) on every project and question the student owns |
 | `getGitHubTree` | `target` (`project` or `question`), `id`, optional `ref` | `entries` (path, type `file` or `dir`, size), `truncated` |
 | `getGitHubFile` | `target`, `id`, `path`, optional `ref` | `content` (null when `binary` or `tooLarge`), `truncated` |
 | `getGitHubDiff` | `target`, `id`, plus a diff reference (or nothing, to use the question's own `diffRef`) | `title`, `files` (filename, status, additions, deletions, patch, patchTruncated, patchUnavailable), `moreFilesOnGitHub` |
+
+The app requests no OAuth scope, so access is public repositories only. The redirect URI registered on the GitHub OAuth App must be `patchcollab://github-callback`.
 
 GitHub errors come back as these codes, with `details.reason` set: `failed-precondition` (`github-not-connected`, `github-token-invalid`, `no-linked-repo`), `resource-exhausted` (`github-rate-limited`, with `resetAt`), `not-found` (`github-not-found`), `permission-denied` (`github-private-repo`, `github-forbidden`), `invalid-argument` (`github-bad-ref`), `deadline-exceeded` (`github-timeout`) and `unavailable`.
