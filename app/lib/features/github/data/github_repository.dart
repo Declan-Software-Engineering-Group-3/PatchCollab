@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
+import '../../../core/models/diff.dart';
+import '../../../core/utils/diff_parser.dart';
 import 'github_repo_model.dart';
 
 // Not a secret. Pass with --dart-define=GITHUB_CLIENT_ID=... when running.
@@ -84,6 +86,31 @@ class GithubRepository {
       if (data['hasMore'] != true) break;
     }
     return repos;
+  }
+
+  /// The diff attached to a question. The function reads the question's own
+  /// `diffRef`, using the author's token, so viewers don't need GitHub.
+  Future<List<DiffFile>> fetchQuestionDiff(String questionId) async {
+    final data = await _call('getGitHubDiff', {
+      'target': 'question',
+      'id': questionId,
+    });
+    return (data['files'] as List).map((f) {
+      final file = Map<String, dynamic>.from(f as Map);
+      final diff = parsePatch(
+        file['filename'] as String,
+        file['patch'] as String? ?? '',
+      );
+      return DiffFile(
+        path: diff.path,
+        lines: diff.lines,
+        note: file['patchUnavailable'] == true
+            ? 'No preview: GitHub did not provide a diff for this file (binary or too large).'
+            : file['patchTruncated'] == true
+            ? 'This file is long, so only the start of the diff is shown.'
+            : null,
+      );
+    }).toList();
   }
 
   /// Revokes the token and clears the student's stored repository links.

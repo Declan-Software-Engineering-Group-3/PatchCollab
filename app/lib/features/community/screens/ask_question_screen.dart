@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../github/data/diff_source.dart';
+import '../../github/data/github_repo_model.dart';
+import '../../github/screens/repo_picker_screen.dart';
 import '../data/community_options.dart';
 import '../providers/community_providers.dart';
 import '../community_theme.dart';
@@ -17,19 +20,21 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _codeController = TextEditingController();
-  final _githubController = TextEditingController();
+  final _diffValueController = TextEditingController();
 
   String? _language;
   String _category = questionCategories.first;
   String _type = typeQuestion;
   bool _saving = false;
+  GithubRepo? _repo;
+  DiffKind _diffKind = DiffKind.commit;
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
     _codeController.dispose();
-    _githubController.dispose();
+    _diffValueController.dispose();
     super.dispose();
   }
 
@@ -38,7 +43,7 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
 
     setState(() => _saving = true);
     final code = _codeController.text.trim();
-    final github = _githubController.text.trim();
+    final diffValue = _diffValueController.text.trim();
 
     try {
       await ref
@@ -51,8 +56,12 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
             type: _type,
             language: _language,
             codeSnippet: code.isEmpty ? null : code,
-            githubUrl: _type == typeReviewRequest && github.isNotEmpty
-                ? github
+            repo: _type == typeReviewRequest ? _repo : null,
+            diff:
+                _type == typeReviewRequest &&
+                    _repo != null &&
+                    diffValue.isNotEmpty
+                ? DiffSource(_diffKind, diffValue)
                 : null,
           );
       if (mounted) Navigator.of(context).pop();
@@ -62,6 +71,14 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Could not post question: $e')));
     }
+  }
+
+  Future<void> _pickRepo() async {
+    final result = await Navigator.of(context).push<RepoPickerResult>(
+      MaterialPageRoute(builder: (_) => RepoPickerScreen(current: _repo)),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _repo = result.repo);
   }
 
   @override
@@ -161,19 +178,12 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
               ),
               if (_type == typeReviewRequest) ...[
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _githubController,
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    labelText: 'GitHub repository link (optional)',
-                    hintText: 'https://github.com/owner/repo',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    final text = value?.trim() ?? '';
-                    if (text.isEmpty || isGithubRepoUrl(text)) return null;
-                    return 'Use a link like https://github.com/owner/repo';
-                  },
+                _RepoSection(
+                  repo: _repo,
+                  onPick: _pickRepo,
+                  diffKind: _diffKind,
+                  onKindChanged: (k) => setState(() => _diffKind = k),
+                  valueController: _diffValueController,
                 ),
               ],
               const SizedBox(height: 24),
@@ -185,6 +195,67 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RepoSection extends StatelessWidget {
+  final GithubRepo? repo;
+  final VoidCallback onPick;
+  final DiffKind diffKind;
+  final ValueChanged<DiffKind> onKindChanged;
+  final TextEditingController valueController;
+
+  const _RepoSection({
+    required this.repo,
+    required this.onPick,
+    required this.diffKind,
+    required this.onKindChanged,
+    required this.valueController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: onPick,
+          icon: const Icon(Icons.link),
+          label: Text(
+            repo == null ? 'Attach a GitHub repository' : repo!.fullName,
+          ),
+        ),
+        if (repo != null) ...[
+          const SizedBox(height: 16),
+          SegmentedButton<DiffKind>(
+            segments: const [
+              ButtonSegment(value: DiffKind.commit, label: Text('Commit')),
+              ButtonSegment(value: DiffKind.compare, label: Text('Compare')),
+              ButtonSegment(value: DiffKind.pull, label: Text('Pull request')),
+            ],
+            selected: {diffKind},
+            onSelectionChanged: (s) => onKindChanged(s.first),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: valueController,
+            decoration: InputDecoration(
+              labelText: switch (diffKind) {
+                DiffKind.commit => 'Commit sha (optional)',
+                DiffKind.compare => 'base...head (optional)',
+                DiffKind.pull => 'Pull request number (optional)',
+              },
+              border: const OutlineInputBorder(),
+            ),
+            validator: (value) {
+              final text = value?.trim() ?? '';
+              if (text.isEmpty) return null;
+              return DiffSource.validate(diffKind, text);
+            },
+          ),
+        ],
+      ],
     );
   }
 }

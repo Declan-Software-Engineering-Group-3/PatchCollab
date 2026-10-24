@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
+import '../../github/data/diff_source.dart';
+import '../../github/data/github_repo_model.dart';
 import 'answer_model.dart';
 import 'question_model.dart';
 
@@ -71,7 +73,8 @@ class CommunityRepository {
     required String type,
     String? language,
     String? codeSnippet,
-    String? githubUrl,
+    GithubRepo? repo,
+    DiffSource? diff,
   }) async {
     final ref = _db.collection('questions').doc();
     await ref.set({
@@ -83,7 +86,9 @@ class CommunityRepository {
       'language': language,
       'category': category,
       'type': type,
-      'githubUrl': githubUrl,
+      'githubUrl': repo?.url,
+      'linkedRepo': repo?.toLinkedRepo(),
+      'diffRef': repo != null ? diff?.toDiffRef() : null,
       'voteCount': 0,
       'acceptedAnswerId': null,
       'createdAt': FieldValue.serverTimestamp(),
@@ -95,6 +100,9 @@ class CommunityRepository {
     required String userId,
     required String questionId,
     required String content,
+    String? anchorPath,
+    int? anchorLine,
+    bool anchorNewSide = true,
   }) async {
     final ref = _db.collection('answers').doc();
     await ref.set({
@@ -104,6 +112,11 @@ class CommunityRepository {
       'content': content,
       'voteCount': 0,
       'isAccepted': false,
+      if (anchorPath != null && anchorLine != null) ...{
+        'anchorPath': anchorPath,
+        'anchorLine': anchorLine,
+        'anchorNewSide': anchorNewSide,
+      },
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
