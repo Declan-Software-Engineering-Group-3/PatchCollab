@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/answer_model.dart';
+import '../data/community_options.dart';
 import '../data/community_repository.dart';
 import '../data/question_model.dart';
 
@@ -38,8 +39,13 @@ final communityRepositoryProvider = Provider<CommunityRepository>((ref) {
 class CommunityFilters {
   final String? language;
   final bool unansweredOnly;
+  final bool reviewRequestsOnly;
 
-  const CommunityFilters({this.language, this.unansweredOnly = false});
+  const CommunityFilters({
+    this.language,
+    this.unansweredOnly = false,
+    this.reviewRequestsOnly = false,
+  });
 }
 
 class CommunityFiltersNotifier extends Notifier<CommunityFilters> {
@@ -50,11 +56,24 @@ class CommunityFiltersNotifier extends Notifier<CommunityFilters> {
     state = CommunityFilters(
       language: language,
       unansweredOnly: state.unansweredOnly,
+      reviewRequestsOnly: state.reviewRequestsOnly,
     );
   }
 
   void setUnansweredOnly(bool value) {
-    state = CommunityFilters(language: state.language, unansweredOnly: value);
+    state = CommunityFilters(
+      language: state.language,
+      unansweredOnly: value,
+      reviewRequestsOnly: state.reviewRequestsOnly,
+    );
+  }
+
+  void setReviewRequestsOnly(bool value) {
+    state = CommunityFilters(
+      language: state.language,
+      unansweredOnly: state.unansweredOnly,
+      reviewRequestsOnly: value,
+    );
   }
 }
 
@@ -65,12 +84,18 @@ final communityFiltersProvider =
 
 final questionsProvider = StreamProvider<List<Question>>((ref) {
   final filters = ref.watch(communityFiltersProvider);
-  return ref
+  final stream = ref
       .watch(communityRepositoryProvider)
       .watchQuestions(
         language: filters.language,
         unansweredOnly: filters.unansweredOnly,
       );
+  // type is filtered here so the query needs no extra composite index
+  if (!filters.reviewRequestsOnly) return stream;
+  return stream.map(
+    (questions) =>
+        questions.where((q) => q.type == typeReviewRequest).toList(),
+  );
 });
 
 final questionProvider = StreamProvider.family<Question?, String>((

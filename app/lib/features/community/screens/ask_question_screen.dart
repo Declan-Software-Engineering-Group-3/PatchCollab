@@ -17,6 +17,7 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _codeController = TextEditingController();
+  final _githubController = TextEditingController();
 
   String? _language;
   String _category = questionCategories.first;
@@ -28,6 +29,7 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
     _titleController.dispose();
     _contentController.dispose();
     _codeController.dispose();
+    _githubController.dispose();
     super.dispose();
   }
 
@@ -36,6 +38,7 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
 
     setState(() => _saving = true);
     final code = _codeController.text.trim();
+    final github = _githubController.text.trim();
 
     try {
       await ref
@@ -48,6 +51,9 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
             type: _type,
             language: _language,
             codeSnippet: code.isEmpty ? null : code,
+            githubUrl: _type == typeReviewRequest && github.isNotEmpty
+                ? github
+                : null,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -153,6 +159,23 @@ class _AskQuestionScreenState extends ConsumerState<AskQuestionScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              if (_type == typeReviewRequest) ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _githubController,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                    labelText: 'GitHub repository link (optional)',
+                    hintText: 'https://github.com/owner/repo',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    final text = value?.trim() ?? '';
+                    if (text.isEmpty || isGithubRepoUrl(text)) return null;
+                    return 'Use a link like https://github.com/owner/repo';
+                  },
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _saving ? null : _submit,
