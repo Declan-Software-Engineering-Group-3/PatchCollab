@@ -18,7 +18,35 @@ class PatchCollabApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'PatchCollab',
-      theme: ThemeData(useMaterial3: true),
+      theme: ThemeData(
+  useMaterial3: true,
+  brightness: Brightness.dark,
+  scaffoldBackgroundColor: const Color(0xFF001B1A),
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: const Color(0xFF00D6C9),
+    brightness: Brightness.dark,
+  ).copyWith(
+    surface: const Color(0xFF001B1A),
+    primaryContainer: const Color(0xFF064C48),
+    surfaceContainerHighest: const Color(0xFF153331),
+  ),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Color(0xFF001B1A),
+    foregroundColor: Colors.white,
+    elevation: 0,
+  ),
+  inputDecorationTheme: const InputDecorationTheme(
+    filled: true,
+    fillColor: Color(0xFF153331),
+    hintStyle: TextStyle(color: Colors.white54),
+    border: OutlineInputBorder(
+      borderSide: BorderSide(color: Color(0xFF28514E)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderSide: BorderSide(color: Color(0xFF28514E)),
+    ),
+  ),
+),
       // TODO: replace with the real navigation shell, community is the only screen for now
       home: const AuthGate(),
     );

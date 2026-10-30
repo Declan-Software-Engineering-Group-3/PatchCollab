@@ -15,16 +15,18 @@ class Conversation {
 
   factory Conversation.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
+
     return Conversation(
       conversationId: doc.id,
       participants: List<String>.from(data['participants'] as List),
       lastMessage: (data['lastMessage'] ?? '') as String,
-      lastMessageAt: data['lastMessageAt'] as Timestamp,
+      lastMessageAt: data['lastMessageAt'] as Timestamp? ?? Timestamp.now(),
     );
   }
 
-  String otherUserId(String currentUserId) =>
-      participants.firstWhere((id) => id != currentUserId);
+  String otherUserId(String currentUserId) {
+    return participants.firstWhere((id) => id != currentUserId);
+  }
 }
 
 class ChatMessage {
@@ -44,12 +46,13 @@ class ChatMessage {
 
   factory ChatMessage.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
+
     return ChatMessage(
       messageId: doc.id,
       senderId: data['senderId'] as String,
       text: data['text'] as String,
       isRead: (data['isRead'] ?? false) as bool,
-      createdAt: data['createdAt'] as Timestamp,
+      createdAt: data['createdAt'] as Timestamp? ?? Timestamp.now(),
     );
   }
 }
