@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -99,7 +100,20 @@ class FriendsScreen extends ConsumerWidget {
 
               return Column(
                 children: items.map((friendship) {
-                  final uid = ref.read(currentSocialUserIdProvider)!;
+                  final uid =
+                      ref.read(currentSocialUserIdProvider)!;
+
+                  // TEMPORARY DEBUGGING
+                  debugPrint('CURRENT AUTH UID: $uid');
+                  debugPrint(
+                    'FRIENDSHIP USER ID: ${friendship.userId}',
+                  );
+                  debugPrint(
+                    'FRIENDSHIP FRIEND ID: ${friendship.friendId}',
+                  );
+                  debugPrint(
+                    'DISPLAYED FRIEND ID: ${friendship.otherUserId(uid)}',
+                  );
 
                   return _FriendTile(
                     userId: friendship.otherUserId(uid),
@@ -299,16 +313,12 @@ class FriendSearchDelegate extends SearchDelegate<SocialUser?> {
                 onPressed: () async {
                   await ref
                       .read(socialActionProvider.notifier)
-                      .sendFriendRequest(
-                        user.userId,
-                      );
+                      .sendFriendRequest(user.userId);
 
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text(
-                          'Friend request sent.',
-                        ),
+                        content: Text('Friend request sent.'),
                       ),
                     );
                   }
