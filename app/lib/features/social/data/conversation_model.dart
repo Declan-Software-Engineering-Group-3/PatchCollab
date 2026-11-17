@@ -1,3 +1,4 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Conversation {
@@ -13,19 +14,31 @@ class Conversation {
     required this.lastMessageAt,
   });
 
-  factory Conversation.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory Conversation.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data()!;
 
     return Conversation(
       conversationId: doc.id,
-      participants: List<String>.from(data['participants'] as List),
+      participants: List<String>.from(
+        data['participants'] as List,
+      ),
       lastMessage: (data['lastMessage'] ?? '') as String,
-      lastMessageAt: data['lastMessageAt'] as Timestamp? ?? Timestamp.now(),
+      lastMessageAt:
+          data['lastMessageAt'] as Timestamp? ?? Timestamp.now(),
     );
   }
 
   String otherUserId(String currentUserId) {
-    return participants.firstWhere((id) => id != currentUserId);
+    for (final id in participants) {
+      if (id != currentUserId) {
+        return id;
+      }
+    }
+
+    // No other participant found.
+    return '';
   }
 }
 
@@ -44,7 +57,9 @@ class ChatMessage {
     required this.createdAt,
   });
 
-  factory ChatMessage.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+  factory ChatMessage.fromDoc(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data()!;
 
     return ChatMessage(
@@ -52,7 +67,8 @@ class ChatMessage {
       senderId: data['senderId'] as String,
       text: data['text'] as String,
       isRead: (data['isRead'] ?? false) as bool,
-      createdAt: data['createdAt'] as Timestamp? ?? Timestamp.now(),
+      createdAt:
+          data['createdAt'] as Timestamp? ?? Timestamp.now(),
     );
   }
 }
